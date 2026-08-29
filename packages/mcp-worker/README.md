@@ -8,7 +8,11 @@ Lets Claude and other agents work an Aryeo account directly, over the Model Cont
 
 ## Deploy it
 
-You need a Cloudflare account, an Aryeo API token, and about five minutes.
+**Every command below runs on your own machine, in a terminal.** Nothing is typed into the Cloudflare dashboard. `wrangler` is a command line tool that talks to Cloudflare's API for you; the worker itself then runs on Cloudflare's network, not on your machine.
+
+You need [Node 20 or newer](https://nodejs.org), a free Cloudflare account, and an Aryeo API token. About five minutes.
+
+**1. Get the code and build it.**
 
 ```bash
 git clone https://github.com/envesko/aryeo-sdk
@@ -18,41 +22,57 @@ npm run build
 cd packages/mcp-worker
 ```
 
-**1. Make a KV namespace.** It holds registered clients, short-lived authorisation codes and access token hashes.
+The build step matters: the worker imports the TypeScript client from this same repository, so the client has to be compiled first.
+
+**2. Log in to Cloudflare.** This opens a browser and asks you to authorise wrangler.
+
+```bash
+npx wrangler login
+```
+
+**3. Make a KV namespace.** It holds registered clients, short-lived authorisation codes and access token hashes.
 
 ```bash
 npx wrangler kv namespace create OAUTH_KV
 ```
 
-Paste the id it prints into `wrangler.jsonc`, replacing `replace-with-your-own-namespace-id`.
+Copy the `id` it prints into `wrangler.jsonc`, replacing `replace-with-your-own-namespace-id`.
 
-**2. Set the two secrets.**
+**4. Set the two secrets.** These are stored encrypted in Cloudflare, never written to disk. Each command prompts for the value so it stays out of your shell history.
 
 ```bash
 npx wrangler secret put ARYEO_API_TOKEN     # your Aryeo API token
 npx wrangler secret put MCP_APPROVAL_CODE   # invent one, keep it somewhere safe
 ```
 
-The approval code is how you prove a connection request is yours. Generate something unguessable:
+For the approval code, generate something unguessable rather than choosing one:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
 ```
 
-**3. Deploy.**
+**5. Deploy.**
 
 ```bash
 npx wrangler deploy
 ```
 
-Check it came up:
+Wrangler prints the URL it deployed to. Check it came up:
 
 ```bash
 curl https://aryeo-mcp.<your-subdomain>.workers.dev/health
 # {"ok":true,"server":"aryeo","tools":39}
 ```
 
-**4. Connect Claude.** Add a custom connector pointing at your worker URL. Claude registers itself, sends you to an approval page, and you paste the approval code from step 2. That is the only time you need it.
+**6. Connect Claude.** Add a custom connector pointing at that URL. Claude registers itself, sends you to an approval page, and you paste the approval code from step 4. That is the only time you need it.
+
+### If something goes wrong
+
+`wrangler deploy` fails with a KV error: the namespace id in `wrangler.jsonc` is still the placeholder, or belongs to a different account than the one you logged into.
+
+`/health` works but Claude cannot connect: check you gave it the full `https://` URL, and that step 4 actually set both secrets (`npx wrangler secret list`).
+
+Every tool returns an authorisation error: the Aryeo token is wrong or lacks access. `npx wrangler tail` shows live logs without exposing the token.
 
 ## What the approval code is for
 

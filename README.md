@@ -55,9 +55,12 @@ Rate limit backoff, the hard page size ceiling, and the handful of endpoints tha
 
 Point Claude at your own Aryeo account in about five minutes. One deployment serves one account, yours, and there is no shared instance to sign up for.
 
+Every command runs on your own machine. Wrangler talks to Cloudflare for you; the worker runs on Cloudflare.
+
 ```bash
 git clone https://github.com/envesko/aryeo-sdk && cd aryeo-sdk && npm install && npm run build
 cd packages/mcp-worker
+npx wrangler login                          # opens a browser
 npx wrangler kv namespace create OAUTH_KV   # paste the id into wrangler.jsonc
 npx wrangler secret put ARYEO_API_TOKEN
 npx wrangler secret put MCP_APPROVAL_CODE
