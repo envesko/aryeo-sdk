@@ -228,10 +228,99 @@ export type OperationId = keyof typeof OPERATIONS;
 `;
 }
 
+
+/**
+ * The typed facade: a nested object per operation namespace, so a caller
+ * writes aryeo.orders.list(...) with full types, while every call is still
+ * driven by the descriptor table underneath.
+ *
+ * Only available operations get a method. The others stay reachable through
+ * core.call(), which explains why they cannot be used.
+ */
+function emitClient(manifest) {
+  const available = Object.entries(manifest.operations).filter(
+    ([, op]) => op.availability?.state === "available",
+  );
+
+  // Build a tree from the dotted ids: orders.paymentInfo.get nests two deep.
+  const tree = {};
+  for (const [id] of available) {
+    const parts = id.split(".");
+    let node = tree;
+    for (const part of parts.slice(0, -1)) {
+      node[part] = node[part] ?? {};
+      node = node[part];
+    }
+    node[parts[parts.length - 1]] = id;
+  }
+
+  function render(node, indent, top) {
+    const pad = "  ".repeat(indent);
+    const lines = [];
+    for (const [key, value] of Object.entries(node)) {
+      if (typeof value === "string") {
+        const T = pascal(value);
+        const op = manifest.operations[value];
+        const hasParams =
+          Object.keys(op.pathParams ?? {}).length > 0 ||
+          callableFilters(op).length > 0 ||
+          Object.keys(op.params ?? {}).length > 0 ||
+          Object.keys(op.body ?? {}).length > 0 ||
+          (op.includes && op.includes.length > 0) ||
+          op.paginated ||
+          op.mutates;
+        const sig = hasParams ? `params: T.${T}Params` : "";
+        const arg = hasParams ? ", params" : "";
+        const call = `(${sig}): Promise<Result<unknown>> =>\n${pad}  this.#core.call(${JSON.stringify(value)}${arg})`;
+        // A class field is an assignment terminated by a semicolon. A nested
+        // object property is a colon terminated by a comma. Getting this wrong
+        // produces a file that looks right and does not parse.
+        lines.push(top ? `${pad}readonly ${key} = ${call};` : `${pad}${key}: ${call},`);
+      } else {
+        lines.push(top ? `${pad}readonly ${key} = {` : `${pad}${key}: {`);
+        lines.push(render(value, indent + 1, false));
+        lines.push(top ? `${pad}};` : `${pad}},`);
+      }
+    }
+    return lines.join("\n");
+  }
+
+  return `${HEADER}
+import { AryeoCore, type ClientOptions, type Result } from "../core.js";
+import type * as T from "./types.${manifest.generation}.js";
+
+/**
+ * Aryeo client for API generation ${manifest.generation}.
+ *
+ * Every method here is generated from the manifest, so the surface cannot
+ * drift from what the API was measured to do.
+ */
+export class AryeoClient {
+  readonly #core: AryeoCore;
+
+  constructor(options: ClientOptions) {
+    this.#core = new AryeoCore(options);
+  }
+
+  /** Escape hatch for an operation with no generated method. */
+  get core(): AryeoCore {
+    return this.#core;
+  }
+
+${render(tree, 1, true)}
+}
+
+export function createClient(options: ClientOptions): AryeoClient {
+  return new AryeoClient(options);
+}
+`;
+}
+
 export async function emit(manifest) {
   const files = new Map();
   const suffix = manifest.generation;
   files.set(`operations.${suffix}.ts`, emitOperations(manifest));
   files.set(`types.${suffix}.ts`, emitTypes(manifest));
+  files.set(`client.${suffix}.ts`, emitClient(manifest));
   return files;
 }
