@@ -1,0 +1,15 @@
+node_modules/
+vendor/
+dist/
+build/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.dev.vars
+*.log
+.DS_Store
+Thumbs.db
+coverage/
+.wrangler/
+composer.lock
