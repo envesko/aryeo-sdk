@@ -15,6 +15,9 @@ final class CouponsResource
     {
     }
 
+    /**
+     * Discount coupons defined for the company.
+     */
     public function list(?array $include = null, ?int $page = null, ?int $perPage = null): \Envesko\Aryeo\Result
     {
         return $this->core->call('coupons.list', array_filter([

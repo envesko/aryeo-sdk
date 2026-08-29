@@ -15,6 +15,9 @@ final class ProductCategoriesResource
     {
     }
 
+    /**
+     * Categories the product catalogue is organised into.
+     */
     public function list(?string $search = null, ?int $page = null, ?int $perPage = null): \Envesko\Aryeo\Result
     {
         return $this->core->call('productCategories.list', array_filter([

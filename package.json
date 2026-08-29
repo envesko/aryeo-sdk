@@ -21,7 +21,7 @@
     "check": "npm run validate && npm run generate -- --check",
     "test": "npm run validate && npm run scan && npm run check && npm run typecheck && npm run conformance",
     "scan": "node tools/scan-evidence.mjs",
-    "typecheck": "tsc --noEmit -p packages/client-ts/tsconfig.json",
+    "typecheck": "tsc --noEmit -p packages/client-ts/tsconfig.json && tsc --noEmit -p packages/mcp-worker/tsconfig.json",
     "build": "tsc -p packages/client-ts/tsconfig.json",
     "conformance": "npm run build && node --test \"conformance/cases/*.test.mjs\"",
     "conformance:php": "php conformance/cases/php-client.php"

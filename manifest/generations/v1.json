@@ -48,6 +48,7 @@
     "appointments.cancel": {
       "path": "/appointments/{appointmentId}/cancel",
       "method": "POST",
+      "summary": "Cancels an appointment somebody is expecting.",
       "availability": {
         "state": "available",
         "note": "POST is what the production integrations send. Confirmed 2026-08-29."
@@ -79,7 +80,10 @@
         "date": "2026-08-29",
         "source": "production"
       },
-      "exercisedHere": false
+      "exercisedHere": false,
+      "quirks": [
+        "Read can_cancel and the lock period flags from appointments.get first."
+      ]
     },
     "appointments.create": {
       "path": "/appointments/store",
@@ -128,6 +132,7 @@
     "appointments.get": {
       "path": "/appointments/{appointmentId}",
       "method": "GET",
+      "summary": "One appointment, including whether it can still be cancelled or moved.",
       "availability": {
         "state": "available"
       },
@@ -148,6 +153,7 @@
     "appointments.list": {
       "path": "/appointments",
       "method": "GET",
+      "summary": "Shoots on the calendar, by date window or search.",
       "availability": {
         "state": "available"
       },
@@ -306,6 +312,7 @@
     "companyTeamMembers.events.list": {
       "path": "/company-team-members/{memberId}/events",
       "method": "GET",
+      "summary": "A team member's calendar events over a window.",
       "availability": {
         "state": "available"
       },
@@ -337,6 +344,7 @@
     "companyTeamMembers.get": {
       "path": "/company-team-members/{memberId}",
       "method": "GET",
+      "summary": "One member of your company team.",
       "availability": {
         "state": "available"
       },
@@ -381,6 +389,7 @@
     "coupons.list": {
       "path": "/coupons",
       "method": "GET",
+      "summary": "Discount coupons defined for the company.",
       "availability": {
         "state": "available"
       },
@@ -523,6 +532,7 @@
     "customers.list": {
       "path": "/customers",
       "method": "GET",
+      "summary": "Customers, which in Aryeo means agents and agencies rather than end consumers.",
       "availability": {
         "state": "available"
       },
@@ -609,6 +619,7 @@
     "listings.get": {
       "path": "/listings/{listingId}",
       "method": "GET",
+      "summary": "One listing, with whatever relationships you ask to expand.",
       "availability": {
         "state": "available"
       },
@@ -868,6 +879,7 @@
     "orders.get": {
       "path": "/orders/{orderId}",
       "method": "GET",
+      "summary": "One order, with whatever relationships you ask to expand.",
       "availability": {
         "state": "available"
       },
@@ -1104,6 +1116,7 @@
     "orders.tags.add": {
       "path": "/orders/{orderId}/tags",
       "method": "POST",
+      "summary": "Attaches a tag to an order.",
       "availability": {
         "state": "available",
         "note": "Contract taken from the Envesko production integrations, which call this route against live accounts. Not fired from this repository."
@@ -1131,11 +1144,15 @@
         "date": "2026-08-29",
         "source": "production"
       },
-      "exercisedHere": false
+      "exercisedHere": false,
+      "quirks": [
+        "Tags drive automation in connected systems, so adding one can have effects beyond Aryeo."
+      ]
     },
     "orders.tags.remove": {
       "path": "/orders/{orderId}/tags/{tagId}",
       "method": "DELETE",
+      "summary": "Detaches a tag from an order.",
       "availability": {
         "state": "available",
         "note": "Contract taken from the Envesko production integrations, which call this route against live accounts. Not fired from this repository."
@@ -1161,7 +1178,10 @@
         "date": "2026-08-29",
         "source": "production"
       },
-      "exercisedHere": false
+      "exercisedHere": false,
+      "quirks": [
+        "Removing a tag can equally trigger or suppress downstream automation."
+      ]
     },
     "payroll.items.create": {
       "path": "/payroll/pay-run-items",
@@ -1378,6 +1398,7 @@
     "productCategories.list": {
       "path": "/product-categories",
       "method": "GET",
+      "summary": "Categories the product catalogue is organised into.",
       "availability": {
         "state": "available"
       },
@@ -1560,6 +1581,7 @@
     "tasks.get": {
       "path": "/tasks/{taskId}",
       "method": "GET",
+      "summary": "One task: the work assigned against an order line, with its due and completion state.",
       "availability": {
         "state": "available"
       },
@@ -1630,6 +1652,7 @@
     "territories.list": {
       "path": "/territories",
       "method": "GET",
+      "summary": "Service territories the company operates in.",
       "availability": {
         "state": "available"
       },

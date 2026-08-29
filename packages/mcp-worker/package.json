@@ -1,0 +1,25 @@
+{
+  "name": "@envesko/aryeo-mcp",
+  "version": "0.1.0",
+  "description": "Model Context Protocol server for the Aryeo real estate media platform.",
+  "license": "MIT",
+  "author": "Envesko",
+  "type": "module",
+  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@envesko/aryeo-client": "0.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/envesko/aryeo-sdk.git",
+    "directory": "packages/mcp-worker"
+  }
+}

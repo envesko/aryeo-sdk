@@ -15,6 +15,9 @@ final class TerritoriesResource
     {
     }
 
+    /**
+     * Service territories the company operates in.
+     */
     public function list(?int $page = null, ?int $perPage = null): \Envesko\Aryeo\Result
     {
         return $this->core->call('territories.list', array_filter([

@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aryeo-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-01",
+
+  // Both are secrets, set with `wrangler secret put`, never in this file:
+  //   ARYEO_API_TOKEN  the Aryeo key this server acts with
+  //   MCP_AUTH_TOKEN   the bearer a client must present
+  //
+  // Without MCP_AUTH_TOKEN the server refuses every request. An unprotected
+  // deployment hands anybody who finds the URL full access to the account.
+  "observability": { "enabled": true }
+}

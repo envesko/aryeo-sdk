@@ -15,6 +15,9 @@ final class TasksResource
     {
     }
 
+    /**
+     * One task: the work assigned against an order line, with its due and completion state.
+     */
     public function get(string $taskId): \Envesko\Aryeo\Result
     {
         return $this->core->call('tasks.get', array_filter([

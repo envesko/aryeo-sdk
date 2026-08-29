@@ -27,6 +27,8 @@ final class OrdersResource
     }
 
     /**
+     * One order, with whatever relationships you ask to expand.
+     *
      * include=items.product is rejected. Product identity is only on the order item detail route.
      */
     public function get(string $orderId, ?array $include = null): \Envesko\Aryeo\Result
@@ -75,6 +77,11 @@ final class OrdersResource
         ], static fn ($value) => $value !== null));
     }
 
+    /**
+     * Attaches a tag to an order.
+     *
+     * Tags drive automation in connected systems, so adding one can have effects beyond Aryeo.
+     */
     public function tagsAdd(string $orderId, string $tag_id, string $confirm): \Envesko\Aryeo\Result
     {
         return $this->core->call('orders.tags.add', array_filter([
@@ -84,6 +91,11 @@ final class OrdersResource
         ], static fn ($value) => $value !== null));
     }
 
+    /**
+     * Detaches a tag from an order.
+     *
+     * Removing a tag can equally trigger or suppress downstream automation.
+     */
     public function tagsRemove(string $orderId, string $tagId, string $confirm): \Envesko\Aryeo\Result
     {
         return $this->core->call('orders.tags.remove', array_filter([

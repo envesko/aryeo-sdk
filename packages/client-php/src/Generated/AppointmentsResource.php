@@ -29,6 +29,11 @@ final class AppointmentsResource
         ], static fn ($value) => $value !== null));
     }
 
+    /**
+     * Cancels an appointment somebody is expecting.
+     *
+     * Read can_cancel and the lock period flags from appointments.get first.
+     */
     public function cancel(string $appointmentId, string $confirm, ?string $reason = null, ?bool $notify_customer = null): \Envesko\Aryeo\Result
     {
         return $this->core->call('appointments.cancel', array_filter([
@@ -58,6 +63,8 @@ final class AppointmentsResource
     }
 
     /**
+     * One appointment, including whether it can still be cancelled or moved.
+     *
      * Carries can_cancel, can_reschedule and the lock period flags. Read them before attempting either mutation.
      */
     public function get(string $appointmentId): \Envesko\Aryeo\Result
@@ -68,6 +75,8 @@ final class AppointmentsResource
     }
 
     /**
+     * Shoots on the calendar, by date window or search.
+     *
      * The date filters are start_at_gte and start_at_lte. The orders spelling appointment_start_at_gte is accepted here and ignored.
      *
      * start_at is stored in UTC. A local calendar day must be converted to instants before filtering or the window lands hours out.

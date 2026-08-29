@@ -14,6 +14,11 @@ export interface AppointmentsAvailabilityGetParams {
   duration: number;
 }
 
+/**
+ * Cancels an appointment somebody is expecting.
+ *
+ * Read can_cancel and the lock period flags from appointments.get first.
+ */
 export interface AppointmentsCancelParams {
   appointmentId: string;
   reason?: string;
@@ -39,6 +44,7 @@ export interface AppointmentsCreateParams {
 }
 
 /**
+ * One appointment, including whether it can still be cancelled or moved.
  *
  * Carries can_cancel, can_reschedule and the lock period flags. Read them before attempting either mutation.
  */
@@ -49,6 +55,7 @@ export interface AppointmentsGetParams {
 export type AppointmentsListInclude = "order" | "order.address" | "order.customer" | "order.customerGroup" | "order.customerTeamMembership" | "order.listing" | "order.items" | "order.items.appointment" | "order.tags" | "owner" | "users" | "items" | "company" | "companyTeamMembers" | "companyTeamMembers.user" | "appointment_attendances" | "appointment_attendances.company_team_member";
 
 /**
+ * Shoots on the calendar, by date window or search.
  *
  * The date filters are start_at_gte and start_at_lte. The orders spelling appointment_start_at_gte is accepted here and ignored.
  *
@@ -94,6 +101,7 @@ export interface AppointmentsTourLinkGetParams {
 }
 
 /**
+ * A team member's calendar events over a window.
  *
  * Calendar events, which is not the same set as shoots. For what somebody is booked on, use orders.list with userIds.
  */
@@ -105,6 +113,9 @@ export interface CompanyTeamMembersEventsListParams {
 
 export type CompanyTeamMembersGetInclude = "company" | "company.feature_flags" | "restrictedCustomers";
 
+/**
+ * One member of your company team.
+ */
 export interface CompanyTeamMembersGetParams {
   memberId: string;
   include?: CompanyTeamMembersGetInclude[];
@@ -125,6 +136,9 @@ export interface CompanyTeamMembersListParams {
 
 export type CouponsListInclude = "promotion_codes" | "discountables";
 
+/**
+ * Discount coupons defined for the company.
+ */
 export interface CouponsListParams {
   include?: CouponsListInclude[];
   page?: number;
@@ -185,6 +199,7 @@ export interface CustomersGetParams {
 export type CustomersListInclude = "users" | "team_members" | "customer_teams" | "customer_team_memberships" | "customer_team_memberships.customer_team" | "custom_field_entries" | "custom_field_entries.custom_field" | "social_profiles" | "billing_address" | "sso_users";
 
 /**
+ * Customers, which in Aryeo means agents and agencies rather than end consumers.
  *
  * There is no orders or listings include here.
  */
@@ -217,6 +232,7 @@ export interface ListingsDetailsGetParams {
 export type ListingsGetInclude = "customers" | "customers.owner" | "list_agent" | "co_list_agent" | "images" | "videos" | "floor_plans" | "files" | "interactive_content" | "property_website" | "orders" | "orders.items" | "orders.appointments" | "marketing_materials" | "esoft_order_lines";
 
 /**
+ * One listing, with whatever relationships you ask to expand.
  *
  * Media expansions are large. A delivered listing routinely carries thirty or more images, each with several sizes. Ask for one media type at a time.
  */
@@ -288,6 +304,7 @@ export interface OrdersDeliverParams {
 export type OrdersGetInclude = "items" | "tags" | "customer" | "customerGroup" | "listing" | "appointments" | "appointments.users" | "unconfirmed_appointments" | "order_form" | "discounts" | "discounts.coupon" | "payments" | "taxes";
 
 /**
+ * One order, with whatever relationships you ask to expand.
  *
  * include=items.product is rejected. Product identity is only on the order item detail route.
  */
@@ -333,6 +350,11 @@ export interface OrdersPaymentInfoGetParams {
   orderId: string;
 }
 
+/**
+ * Attaches a tag to an order.
+ *
+ * Tags drive automation in connected systems, so adding one can have effects beyond Aryeo.
+ */
 export interface OrdersTagsAddParams {
   orderId: string;
   tag_id: string;
@@ -340,6 +362,11 @@ export interface OrdersTagsAddParams {
   confirm: string;
 }
 
+/**
+ * Detaches a tag from an order.
+ *
+ * Removing a tag can equally trigger or suppress downstream automation.
+ */
 export interface OrdersTagsRemoveParams {
   orderId: string;
   tagId: string;
@@ -397,6 +424,9 @@ export interface PayrollItemsListParams {
   perPage?: number;
 }
 
+/**
+ * Categories the product catalogue is organised into.
+ */
 export interface ProductCategoriesListParams {
   search?: string;
   page?: number;
@@ -460,6 +490,9 @@ export interface TagsListParams {
   perPage?: number;
 }
 
+/**
+ * One task: the work assigned against an order line, with its due and completion state.
+ */
 export interface TasksGetParams {
   taskId: string;
 }
@@ -483,6 +516,9 @@ export interface TasksListParams {
   perPage?: number;
 }
 
+/**
+ * Service territories the company operates in.
+ */
 export interface TerritoriesListParams {
   page?: number;
   perPage?: number;

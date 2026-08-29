@@ -40,6 +40,8 @@ final class ListingsResource
     }
 
     /**
+     * One listing, with whatever relationships you ask to expand.
+     *
      * Media expansions are large. A delivered listing routinely carries thirty or more images, each with several sizes. Ask for one media type at a time.
      */
     public function get(string $listingId, ?array $include = null): \Envesko\Aryeo\Result

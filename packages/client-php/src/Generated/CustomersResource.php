@@ -47,6 +47,8 @@ final class CustomersResource
     }
 
     /**
+     * Customers, which in Aryeo means agents and agencies rather than end consumers.
+     *
      * There is no orders or listings include here.
      */
     public function list(?string $search = null, ?string $email = null, ?array $include = null, ?int $page = null, ?int $perPage = null): \Envesko\Aryeo\Result

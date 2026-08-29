@@ -16,6 +16,8 @@ final class CompanyTeamMembersResource
     }
 
     /**
+     * A team member's calendar events over a window.
+     *
      * Calendar events, which is not the same set as shoots. For what somebody is booked on, use orders.list with userIds.
      */
     public function eventsList(string $memberId, string $start, string $end): \Envesko\Aryeo\Result
@@ -27,6 +29,9 @@ final class CompanyTeamMembersResource
         ], static fn ($value) => $value !== null));
     }
 
+    /**
+     * One member of your company team.
+     */
     public function get(string $memberId, ?array $include = null): \Envesko\Aryeo\Result
     {
         return $this->core->call('companyTeamMembers.get', array_filter([
