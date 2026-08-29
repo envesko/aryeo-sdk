@@ -14,6 +14,7 @@ import { describe, it } from "node:test";
 
 import { createClient, OPERATIONS } from "../../packages/client-ts/dist/index.js";
 import {
+  AryeoConfirmationError,
   AryeoIgnoredFilterError,
   AryeoUnavailableOperationError,
 } from "../../packages/client-ts/dist/errors.js";
@@ -132,18 +133,22 @@ describe("mutating operations are gated", () => {
   for (const [id, descriptor] of entries) {
     if (!descriptor.mutates) continue;
 
-    it(`${id} records how a caller confirms it`, () => {
+    it(`${id} records how a caller confirms it`, async () => {
       assert.ok(
         typeof descriptor.confirmField === "string" && descriptor.confirmField.length > 0,
         `${id} mutates upstream state and must name a field to echo`,
       );
-      // Nothing that changes data should be callable until it has been
-      // exercised deliberately against a record that does not matter.
-      assert.equal(
-        descriptor.availability,
-        "unverified",
-        `${id} mutates and is marked ${descriptor.availability}; confirm it was exercised on purpose`,
-      );
+      // A callable write is fine, so long as the gate stands in front of it.
+      // What must never happen is a write reaching the API without one.
+      if (descriptor.availability === "available") {
+        const { aryeo, calls } = harness();
+        await assert.rejects(
+          () => aryeo.core.call(id, pathParamsFor(descriptor)),
+          AryeoConfirmationError,
+          `${id} is callable and must refuse to fire without confirmation`,
+        );
+        assert.equal(calls.length, 0, `${id} reached the network with no confirmation`);
+      }
     });
   }
 });

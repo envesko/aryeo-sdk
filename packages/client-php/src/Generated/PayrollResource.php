@@ -16,6 +16,24 @@ final class PayrollResource
     }
 
     /**
+     * Records a pay run item against an order and a team member.
+     *
+     * Aryeo renders neither newlines nor HTML in the title, so multi-line narrative has to use a visual separator.
+     */
+    public function itemsCreate(string $title, int $amount, string $submitted_date, string $company_team_member_id, string $order_id, string $confirm, ?string $note = null): \Envesko\Aryeo\Result
+    {
+        return $this->core->call('payroll.items.create', array_filter([
+            'title' => $title,
+            'amount' => $amount,
+            'submitted_date' => $submitted_date,
+            'company_team_member_id' => $company_team_member_id,
+            'order_id' => $order_id,
+            'confirm' => $confirm,
+            'note' => $note,
+        ], static fn ($value) => $value !== null));
+    }
+
+    /**
      * Pay run items. Amounts are in minor units.
      *
      * The default record carries no order or team member. Ask for the includes.

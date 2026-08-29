@@ -4,40 +4,69 @@
   "title": "Aryeo capability manifest",
   "description": "Describes one generation of the Aryeo API the way it actually responds. Every client in this repository is generated from a document conforming to this schema.",
   "type": "object",
-  "required": ["generation", "baseUrl", "auth", "operations"],
+  "required": [
+    "generation",
+    "baseUrl",
+    "auth",
+    "operations"
+  ],
   "additionalProperties": false,
-
   "properties": {
     "generation": {
       "description": "Which Aryeo API this document describes. Clients select a generation at construction; the domain surface is identical across them.",
-      "enum": ["v1", "v2"]
+      "enum": [
+        "v1",
+        "v2"
+      ]
     },
-    "baseUrl": { "type": "string", "format": "uri" },
+    "baseUrl": {
+      "type": "string",
+      "format": "uri"
+    },
     "auth": {
       "type": "object",
-      "required": ["scheme", "header"],
+      "required": [
+        "scheme",
+        "header"
+      ],
       "additionalProperties": false,
       "properties": {
-        "scheme": { "enum": ["bearer"] },
-        "header": { "type": "string" }
+        "scheme": {
+          "enum": [
+            "bearer"
+          ]
+        },
+        "header": {
+          "type": "string"
+        }
       }
     },
     "defaults": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "perPage": { "type": "integer", "minimum": 1 },
+        "perPage": {
+          "type": "integer",
+          "minimum": 1
+        },
         "perPageMax": {
           "type": "integer",
           "minimum": 1,
           "description": "Server-side ceiling. Requesting more is accepted and silently capped, so clients must not promise a larger page."
         },
         "filterStyle": {
-          "enum": ["bracketed", "flat"],
+          "enum": [
+            "bracketed",
+            "flat"
+          ],
           "description": "bracketed means filter[name]=value. Flat parameters are ignored on this generation."
         },
         "enumCase": {
-          "enum": ["lower", "upper", "preserve"],
+          "enum": [
+            "lower",
+            "upper",
+            "preserve"
+          ],
           "description": "Case filter enum values are sent in. Response enums may use a different case; that is recorded per operation."
         }
       }
@@ -45,24 +74,43 @@
     "operations": {
       "type": "object",
       "description": "Keyed by domain operation id, e.g. orders.list. The id is stable across generations and is what the generated clients expose.",
-      "propertyNames": { "pattern": "^[a-z][a-zA-Z0-9]*(\\.[a-z][a-zA-Z0-9]*)*$" },
-      "additionalProperties": { "$ref": "#/$defs/operation" }
+      "propertyNames": {
+        "pattern": "^[a-z][a-zA-Z0-9]*(\\.[a-z][a-zA-Z0-9]*)*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/operation"
+      }
     }
   },
-
   "$defs": {
     "operation": {
       "type": "object",
-      "required": ["path", "method", "availability"],
+      "required": [
+        "path",
+        "method",
+        "availability"
+      ],
       "additionalProperties": false,
       "properties": {
         "path": {
           "type": "string",
           "description": "Path template relative to baseUrl. Parameters in {braces}."
         },
-        "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
-        "summary": { "type": "string" },
-        "availability": { "$ref": "#/$defs/availability" },
+        "method": {
+          "enum": [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE"
+          ]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "availability": {
+          "$ref": "#/$defs/availability"
+        },
         "mutates": {
           "type": "boolean",
           "default": false,
@@ -74,27 +122,37 @@
         },
         "pathParams": {
           "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/param" }
+          "additionalProperties": {
+            "$ref": "#/$defs/param"
+          }
         },
         "filters": {
           "type": "object",
           "description": "Query filters. The state field is the point of this whole document.",
-          "additionalProperties": { "$ref": "#/$defs/filter" }
+          "additionalProperties": {
+            "$ref": "#/$defs/filter"
+          }
         },
         "params": {
           "type": "object",
           "description": "Non-filter query parameters, e.g. timezone, interval, page.",
-          "additionalProperties": { "$ref": "#/$defs/param" }
+          "additionalProperties": {
+            "$ref": "#/$defs/param"
+          }
         },
         "body": {
           "type": "object",
           "description": "Request body fields for mutating operations.",
-          "additionalProperties": { "$ref": "#/$defs/param" }
+          "additionalProperties": {
+            "$ref": "#/$defs/param"
+          }
         },
         "includes": {
           "type": "array",
           "description": "Relationship expansions this endpoint accepts, taken verbatim from the allowlist the API returns in a 400 body. An empty array means expansions are not supported here; omit the key when unknown.",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "includesUnvalidated": {
           "type": "boolean",
@@ -104,57 +162,105 @@
         "sorts": {
           "type": "array",
           "description": "Accepted sort fields. Prefix with - for descending.",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
-        "perPageMax": { "type": "integer", "minimum": 1 },
-        "paginated": { "type": "boolean", "default": false },
+        "perPageMax": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "paginated": {
+          "type": "boolean",
+          "default": false
+        },
         "responseEnums": {
           "type": "object",
           "description": "Values a field can hold in a response. Recorded separately from filter values because the two frequently disagree in case and in membership.",
-          "additionalProperties": { "type": "array", "items": { "type": "string" } }
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
         },
         "quirks": {
           "type": "array",
           "description": "Behaviour a caller would otherwise discover in production. One sentence each, plain language.",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
-        "evidence": { "$ref": "#/$defs/evidenceRef" }
+        "evidence": {
+          "$ref": "#/$defs/evidenceRef"
+        },
+        "exercisedHere": {
+          "type": "boolean",
+          "default": true,
+          "description": "False when the contract is known from production usage but no request has been fired from this repository. A fact about us, not about the API."
+        }
       },
-
       "allOf": [
         {
-          "if": { "properties": { "mutates": { "const": true } }, "required": ["mutates"] },
-          "then": { "required": ["confirmation"] }
+          "if": {
+            "properties": {
+              "mutates": {
+                "const": true
+              }
+            },
+            "required": [
+              "mutates"
+            ]
+          },
+          "then": {
+            "required": [
+              "confirmation"
+            ]
+          }
         }
       ]
     },
-
     "availability": {
       "type": "object",
-      "required": ["state"],
+      "required": [
+        "state"
+      ],
       "additionalProperties": false,
       "properties": {
         "state": {
-          "enum": ["available", "unauthorised", "absent", "unverified"],
-          "description": "available: reachable and exercised. unauthorised: the route exists but the API refuses it with a standard key, so no client method is generated. absent: the route does not exist. unverified: described from production code but never exercised, which is the normal state for a mutating operation."
+          "enum": [
+            "available",
+            "unauthorised",
+            "absent",
+            "unverified"
+          ],
+          "description": "available: the contract is known and the operation is callable. unauthorised: the route exists but the API refuses it with a standard key. absent: the route does not exist. unverified: the contract itself is not known, so calling it would be guesswork. A write whose contract is known from production usage is available and gated by confirmation, not blocked."
         },
-        "http": { "type": "integer" },
-        "note": { "type": "string" },
+        "http": {
+          "type": "integer"
+        },
+        "note": {
+          "type": "string"
+        },
         "alternative": {
           "type": "string",
           "description": "Operation id to reach for instead when this one is unusable."
         }
       }
     },
-
     "confirmation": {
       "type": "object",
-      "required": ["kind", "field"],
+      "required": [
+        "kind",
+        "field"
+      ],
       "additionalProperties": false,
       "description": "How a caller proves intent before a mutating call runs. A boolean flag is deliberately not an option: a prompt with one safe answer and one dangerous answer gets answered by reflex.",
       "properties": {
         "kind": {
-          "enum": ["echoIdentifier"],
+          "enum": [
+            "echoIdentifier"
+          ],
           "description": "echoIdentifier: the caller must supply a value read off the target record, so the record has to have been fetched first."
         },
         "field": {
@@ -167,10 +273,11 @@
         }
       }
     },
-
     "filter": {
       "type": "object",
-      "required": ["state"],
+      "required": [
+        "state"
+      ],
       "additionalProperties": false,
       "properties": {
         "wire": {
@@ -178,13 +285,29 @@
           "description": "Exact query parameter sent. Omit for a filter that is never sent, such as an ignored one."
         },
         "state": {
-          "enum": ["honoured", "ignored", "rejected", "unverified"],
+          "enum": [
+            "honoured",
+            "ignored",
+            "rejected",
+            "unverified"
+          ],
           "description": "honoured: measured with a real value and the result set narrowed. ignored: accepted with a 200 and no effect, so the caller gets everything back looking filtered. rejected: the API refuses it outright. unverified: not yet measured."
         },
-        "type": { "$ref": "#/$defs/valueType" },
-        "enum": { "type": "array", "items": { "type": "string" } },
+        "type": {
+          "$ref": "#/$defs/valueType"
+        },
+        "enum": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "arrayForm": {
-          "enum": ["indexed", "repeated", "csv"],
+          "enum": [
+            "indexed",
+            "repeated",
+            "csv"
+          ],
           "description": "indexed means filter[name][0]=value. Several Aryeo filters accept only the plural indexed form and ignore the singular spelling entirely."
         },
         "useInstead": {
@@ -192,49 +315,98 @@
           "description": "For an ignored or rejected filter, the name of the one that does work."
         },
         "strategy": {
-          "enum": ["client-side", "unsupported"],
+          "enum": [
+            "client-side",
+            "unsupported"
+          ],
           "description": "What the client does with a filter the API will not apply. client-side means it is applied in memory over a bounded scan and reported in the response. unsupported means it is not exposed at all."
         },
-        "http": { "type": "integer" },
-        "note": { "type": "string" },
-        "evidence": { "$ref": "#/$defs/evidenceRef" }
+        "http": {
+          "type": "integer"
+        },
+        "note": {
+          "type": "string"
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidenceRef"
+        }
       }
     },
-
     "param": {
       "type": "object",
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "additionalProperties": false,
       "properties": {
-        "type": { "$ref": "#/$defs/valueType" },
-        "required": { "type": "boolean", "default": false },
-        "enum": { "type": "array", "items": { "type": "string" } },
+        "type": {
+          "$ref": "#/$defs/valueType"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "enum": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "default": {},
-        "min": { "type": "number" },
-        "max": { "type": "number" },
-        "units": { "type": "string" },
-        "note": { "type": "string" }
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "units": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
       }
     },
-
     "valueType": {
-      "enum": ["string", "integer", "number", "boolean", "uuid", "date", "datetime", "money", "array", "object"]
+      "enum": [
+        "string",
+        "integer",
+        "number",
+        "boolean",
+        "uuid",
+        "date",
+        "datetime",
+        "money",
+        "array",
+        "object"
+      ]
     },
-
     "evidenceRef": {
       "type": "object",
-      "required": ["file", "date"],
+      "required": [
+        "file",
+        "date"
+      ],
       "additionalProperties": false,
       "description": "Where the claim came from. Every honoured or ignored filter should carry one.",
       "properties": {
-        "file": { "type": "string", "description": "Path under evidence/." },
-        "date": { "type": "string", "format": "date" },
+        "file": {
+          "type": "string",
+          "description": "Path under evidence/."
+        },
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
         "measurement": {
           "type": "string",
           "description": "The number that settled it, e.g. 1 of 5383."
         },
         "source": {
-          "enum": ["probe", "production"],
+          "enum": [
+            "probe",
+            "production"
+          ],
           "default": "probe",
           "description": "probe: measured by the probe tool. production: read out of code that has been running against a live account, which is how mutating operations are described."
         }

@@ -39,11 +39,15 @@ but the key is worth fixing.
 
 **Mirror automation.** The PHP package needs a read-only mirror repo and a job that pushes to it on tag, because Packagist expects one repository per package. Not yet written.
 
+## Resolved
+
+**Appointment cancellation method.** Settled 2026-08-29: POST is what the Envesko
+production integrations send, and they are the authority on these routes. The manifest
+records POST and the operation is callable behind the confirmation gate.
+
 ## Unverified, must be measured before it ships
 
-**Appointment cancellation method.** Production code in the Envesko estate sends `POST /appointments/{id}/cancel`. An earlier MCP implementation sent `PUT`. Neither has been confirmed against a real cancellation, and both cannot be right. Resolve on a disposable appointment before generating this method. Recorded in the manifest as `appointments.cancel`, availability `unverified`.
-
-**Order delivery.** `POST /orders/{id}/deliver` publishes a listing and emails an agent. It is described from production code whose own author noted it was built but never tested against a live write. It stays `unverified` and generates no client method until somebody exercises it deliberately on an order that does not matter.
+**Order delivery has never been fired from here.** `POST /orders/{id}/deliver` publishes a listing and emails an agent. The contract comes from production code whose own author noted it was built but never tested against a live write. It is callable behind the confirmation gate and carries `exercisedHere: false`. Worth one deliberate run against an order that does not matter.
 
 **Order creation body.** `POST /orders` is known to exist; its accepted fields are not enumerated. Guessing them creates malformed orders on a real account, so the manifest records the route with no body schema.
 

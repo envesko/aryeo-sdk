@@ -170,6 +170,7 @@ function emitOperations(manifest) {
           method: op.method,
           availability: op.availability?.state,
           ...(op.mutates ? { mutates: true, confirmField: op.confirmation?.field } : {}),
+          ...(op.exercisedHere === false ? { exercisedHere: false } : {}),
           ...(op.paginated ? { paginated: true } : {}),
           ...(op.perPageMax ? { perPageMax: op.perPageMax } : {}),
           ...(Object.keys(filters).length > 0 ? { filters } : {}),
@@ -202,6 +203,8 @@ export interface OperationDescriptor {
   availability: "available" | "unauthorised" | "absent" | "unverified";
   mutates?: boolean;
   confirmField?: string;
+  /** False when the contract comes from production usage rather than a request fired here. */
+  exercisedHere?: boolean;
   paginated?: boolean;
   perPageMax?: number;
   filters?: Record<string, FilterDescriptor>;

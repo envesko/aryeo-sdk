@@ -89,6 +89,7 @@ function emitOperations(manifest) {
       method: op.method,
       availability: op.availability?.state,
       ...(op.mutates ? { mutates: true, confirmField: op.confirmation?.field } : {}),
+      ...(op.exercisedHere === false ? { exercisedHere: false } : {}),
       ...(op.paginated ? { paginated: true } : {}),
       ...(op.perPageMax ? { perPageMax: op.perPageMax } : {}),
       ...(Object.keys(filters).length > 0 ? { filters } : {}),

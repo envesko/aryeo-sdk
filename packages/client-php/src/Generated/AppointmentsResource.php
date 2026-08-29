@@ -29,6 +29,34 @@ final class AppointmentsResource
         ], static fn ($value) => $value !== null));
     }
 
+    public function cancel(string $appointmentId, string $confirm, ?string $reason = null, ?bool $notify_customer = null): \Envesko\Aryeo\Result
+    {
+        return $this->core->call('appointments.cancel', array_filter([
+            'appointmentId' => $appointmentId,
+            'confirm' => $confirm,
+            'reason' => $reason,
+            'notify_customer' => $notify_customer,
+        ], static fn ($value) => $value !== null));
+    }
+
+    /**
+     * Books an appointment against an existing order.
+     *
+     * Aryeo stores whatever span it is given and does not derive length from the order's products, so the caller owns the number.
+     *
+     * The order must already carry an address or the booking is refused.
+     */
+    public function create(string $order_id, string $start_at, string $end_at, string $confirm, ?bool $notify_customer = null): \Envesko\Aryeo\Result
+    {
+        return $this->core->call('appointments.create', array_filter([
+            'order_id' => $order_id,
+            'start_at' => $start_at,
+            'end_at' => $end_at,
+            'confirm' => $confirm,
+            'notify_customer' => $notify_customer,
+        ], static fn ($value) => $value !== null));
+    }
+
     /**
      * Carries can_cancel, can_reschedule and the lock period flags. Read them before attempting either mutation.
      */
@@ -58,6 +86,23 @@ final class AppointmentsResource
             'include' => $include,
             'page' => $page,
             'perPage' => $perPage,
+        ], static fn ($value) => $value !== null));
+    }
+
+    /**
+     * Moves an appointment to a new start, keeping its length.
+     *
+     * Takes no duration. To change how long a shoot runs, cancel and rebook.
+     *
+     * Read can_reschedule and the lock period flags from appointments.get first.
+     */
+    public function reschedule(string $appointmentId, string $start_at, string $confirm, ?bool $notify_customer = null): \Envesko\Aryeo\Result
+    {
+        return $this->core->call('appointments.reschedule', array_filter([
+            'appointmentId' => $appointmentId,
+            'start_at' => $start_at,
+            'confirm' => $confirm,
+            'notify_customer' => $notify_customer,
         ], static fn ($value) => $value !== null));
     }
 

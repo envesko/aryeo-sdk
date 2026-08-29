@@ -16,6 +16,17 @@ final class OrdersResource
     }
 
     /**
+     * Publishes the listing and emails the agent.
+     */
+    public function deliver(string $orderId, string $confirm): \Envesko\Aryeo\Result
+    {
+        return $this->core->call('orders.deliver', array_filter([
+            'orderId' => $orderId,
+            'confirm' => $confirm,
+        ], static fn ($value) => $value !== null));
+    }
+
+    /**
      * include=items.product is rejected. Product identity is only on the order item detail route.
      */
     public function get(string $orderId, ?array $include = null): \Envesko\Aryeo\Result
@@ -61,6 +72,24 @@ final class OrdersResource
     {
         return $this->core->call('orders.paymentInfo.get', array_filter([
             'orderId' => $orderId,
+        ], static fn ($value) => $value !== null));
+    }
+
+    public function tagsAdd(string $orderId, string $tag_id, string $confirm): \Envesko\Aryeo\Result
+    {
+        return $this->core->call('orders.tags.add', array_filter([
+            'orderId' => $orderId,
+            'tag_id' => $tag_id,
+            'confirm' => $confirm,
+        ], static fn ($value) => $value !== null));
+    }
+
+    public function tagsRemove(string $orderId, string $tagId, string $confirm): \Envesko\Aryeo\Result
+    {
+        return $this->core->call('orders.tags.remove', array_filter([
+            'orderId' => $orderId,
+            'tagId' => $tagId,
+            'confirm' => $confirm,
         ], static fn ($value) => $value !== null));
     }
 }

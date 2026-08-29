@@ -27,10 +27,16 @@ export class AryeoClient {
       get: (params: T.AppointmentsAvailabilityGetParams): Promise<Result<unknown>> =>
         this.#core.call("appointments.availability.get", params),
     },
+    cancel: (params: T.AppointmentsCancelParams): Promise<Result<unknown>> =>
+      this.#core.call("appointments.cancel", params),
+    create: (params: T.AppointmentsCreateParams): Promise<Result<unknown>> =>
+      this.#core.call("appointments.create", params),
     get: (params: T.AppointmentsGetParams): Promise<Result<unknown>> =>
       this.#core.call("appointments.get", params),
     list: (params: T.AppointmentsListParams): Promise<Result<unknown>> =>
       this.#core.call("appointments.list", params),
+    reschedule: (params: T.AppointmentsRescheduleParams): Promise<Result<unknown>> =>
+      this.#core.call("appointments.reschedule", params),
     tourLink: {
       get: (params: T.AppointmentsTourLinkGetParams): Promise<Result<unknown>> =>
         this.#core.call("appointments.tourLink.get", params),
@@ -59,6 +65,8 @@ export class AryeoClient {
       this.#core.call("customerUsers.list", params),
   };
   readonly customers = {
+    create: (params: T.CustomersCreateParams): Promise<Result<unknown>> =>
+      this.#core.call("customers.create", params),
     get: (params: T.CustomersGetParams): Promise<Result<unknown>> =>
       this.#core.call("customers.get", params),
     list: (params: T.CustomersListParams): Promise<Result<unknown>> =>
@@ -91,6 +99,8 @@ export class AryeoClient {
       this.#core.call("orderItems.get", params),
   };
   readonly orders = {
+    deliver: (params: T.OrdersDeliverParams): Promise<Result<unknown>> =>
+      this.#core.call("orders.deliver", params),
     get: (params: T.OrdersGetParams): Promise<Result<unknown>> =>
       this.#core.call("orders.get", params),
     list: (params: T.OrdersListParams): Promise<Result<unknown>> =>
@@ -99,9 +109,17 @@ export class AryeoClient {
       get: (params: T.OrdersPaymentInfoGetParams): Promise<Result<unknown>> =>
         this.#core.call("orders.paymentInfo.get", params),
     },
+    tags: {
+      add: (params: T.OrdersTagsAddParams): Promise<Result<unknown>> =>
+        this.#core.call("orders.tags.add", params),
+      remove: (params: T.OrdersTagsRemoveParams): Promise<Result<unknown>> =>
+        this.#core.call("orders.tags.remove", params),
+    },
   };
   readonly payroll = {
     items: {
+      create: (params: T.PayrollItemsCreateParams): Promise<Result<unknown>> =>
+        this.#core.call("payroll.items.create", params),
       list: (params: T.PayrollItemsListParams): Promise<Result<unknown>> =>
         this.#core.call("payroll.items.list", params),
     },

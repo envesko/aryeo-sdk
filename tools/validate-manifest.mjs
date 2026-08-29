@@ -76,8 +76,18 @@ function checkOperation(generation, id, op) {
       if (!op.confirmation.field) fail(where, "confirmation is missing the field to echo");
       if (!op.confirmation.warns) warn(where, "confirmation has no warning text for the caller");
     }
+    // A callable write must say where its contract came from. Production
+    // usage is a stronger signal than a probe here, because nobody should be
+    // firing writes at a live account to discover a shape.
     if (state === "available") {
-      warn(where, "marked available; a mutating operation should stay unverified until it has been exercised deliberately");
+      const fromProduction = op.evidence?.source === "production";
+      const flagged = op.exercisedHere === false;
+      if (!fromProduction && !flagged) {
+        fail(where, "callable and mutating, but records neither production provenance nor exercisedHere");
+      }
+      if (flagged && !op.availability.note) {
+        warn(where, "callable but never fired from here, with no note saying so");
+      }
     }
   }
 

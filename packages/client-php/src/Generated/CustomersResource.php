@@ -16,6 +16,24 @@ final class CustomersResource
     }
 
     /**
+     * Adds a customer, which in Aryeo means an agent or agency rather than an end consumer.
+     *
+     * A name field sent here is overwritten; Aryeo sets it from the first and last name.
+     *
+     * internal_notes is accepted and dropped.
+     */
+    public function create(string $owner_first_name, string $owner_last_name, string $email, string $confirm, ?string $phone = null): \Envesko\Aryeo\Result
+    {
+        return $this->core->call('customers.create', array_filter([
+            'owner_first_name' => $owner_first_name,
+            'owner_last_name' => $owner_last_name,
+            'email' => $email,
+            'confirm' => $confirm,
+            'phone' => $phone,
+        ], static fn ($value) => $value !== null));
+    }
+
+    /**
      * One customer by id.
      *
      * Absent from the published API documentation but returns a full record.

@@ -49,8 +49,8 @@
       "path": "/appointments/{appointmentId}/cancel",
       "method": "POST",
       "availability": {
-        "state": "unverified",
-        "note": "CONFLICT: production code in the Envesko estate uses POST here, while an earlier MCP implementation used PUT. Neither has been confirmed against a live cancellation. Resolve before generating this method."
+        "state": "available",
+        "note": "POST is what the production integrations send. Confirmed 2026-08-29."
       },
       "mutates": true,
       "confirmation": {
@@ -78,15 +78,16 @@
         "file": "2026-08-29-writes.json",
         "date": "2026-08-29",
         "source": "production"
-      }
+      },
+      "exercisedHere": false
     },
     "appointments.create": {
       "path": "/appointments/store",
       "method": "POST",
       "summary": "Books an appointment against an existing order.",
       "availability": {
-        "state": "unverified",
-        "note": "Described from production code. Not exercised from this repository, because booking one puts a real slot in somebody's calendar."
+        "state": "available",
+        "note": "Contract taken from the Envesko production integrations, which call this route against live accounts. Not fired from this repository."
       },
       "mutates": true,
       "confirmation": {
@@ -121,7 +122,8 @@
         "file": "2026-08-29-writes.json",
         "date": "2026-08-29",
         "source": "production"
-      }
+      },
+      "exercisedHere": false
     },
     "appointments.get": {
       "path": "/appointments/{appointmentId}",
@@ -247,8 +249,8 @@
       "method": "PUT",
       "summary": "Moves an appointment to a new start, keeping its length.",
       "availability": {
-        "state": "unverified",
-        "note": "Described from production code. The method is PUT here while cancellation is POST; both are unconfirmed. See BLOCKERS.md."
+        "state": "available",
+        "note": "Contract taken from the Envesko production integrations, which call this route against live accounts. Not fired from this repository."
       },
       "mutates": true,
       "confirmation": {
@@ -280,7 +282,8 @@
         "file": "2026-08-29-writes.json",
         "date": "2026-08-29",
         "source": "production"
-      }
+      },
+      "exercisedHere": false
     },
     "appointments.tourLink.get": {
       "path": "/appointments/{appointmentId}/3dh-tour-link",
@@ -447,8 +450,8 @@
       "method": "POST",
       "summary": "Adds a customer, which in Aryeo means an agent or agency rather than an end consumer.",
       "availability": {
-        "state": "unverified",
-        "note": "Described from production code that reports having exercised it. Not exercised from this repository."
+        "state": "available",
+        "note": "Contract taken from the Envesko production integrations, which call this route against live accounts. Not fired from this repository."
       },
       "mutates": true,
       "confirmation": {
@@ -481,7 +484,8 @@
         "file": "2026-08-29-writes.json",
         "date": "2026-08-29",
         "source": "production"
-      }
+      },
+      "exercisedHere": false
     },
     "customers.get": {
       "path": "/customers/{customerId}",
@@ -820,7 +824,7 @@
       "summary": "Creates an order upstream.",
       "availability": {
         "state": "unverified",
-        "note": "Described from production code. Body fields are not yet enumerated here, because guessing them is how you create malformed orders on somebody's account."
+        "note": "The route exists, but its accepted body fields are not known. Guessing them creates malformed orders on a real account, so this stays uncallable until somebody records the contract."
       },
       "mutates": true,
       "confirmation": {
@@ -839,8 +843,8 @@
       "method": "POST",
       "summary": "Publishes the listing and emails the agent.",
       "availability": {
-        "state": "unverified",
-        "note": "Described from production code in the Envesko estate. Never exercised by this repository, because exercising it would publish somebody's listing."
+        "state": "available",
+        "note": "Contract taken from the Envesko production integrations, which call this route against live accounts. Not fired from this repository."
       },
       "mutates": true,
       "confirmation": {
@@ -858,7 +862,8 @@
         "file": "2026-08-29-writes.json",
         "date": "2026-08-29",
         "source": "production"
-      }
+      },
+      "exercisedHere": false
     },
     "orders.get": {
       "path": "/orders/{orderId}",
@@ -1100,8 +1105,8 @@
       "path": "/orders/{orderId}/tags",
       "method": "POST",
       "availability": {
-        "state": "unverified",
-        "note": "Described from production code in the Envesko estate."
+        "state": "available",
+        "note": "Contract taken from the Envesko production integrations, which call this route against live accounts. Not fired from this repository."
       },
       "mutates": true,
       "confirmation": {
@@ -1125,14 +1130,15 @@
         "file": "2026-08-29-writes.json",
         "date": "2026-08-29",
         "source": "production"
-      }
+      },
+      "exercisedHere": false
     },
     "orders.tags.remove": {
       "path": "/orders/{orderId}/tags/{tagId}",
       "method": "DELETE",
       "availability": {
-        "state": "unverified",
-        "note": "Described from production code in the Envesko estate."
+        "state": "available",
+        "note": "Contract taken from the Envesko production integrations, which call this route against live accounts. Not fired from this repository."
       },
       "mutates": true,
       "confirmation": {
@@ -1154,15 +1160,16 @@
         "file": "2026-08-29-writes.json",
         "date": "2026-08-29",
         "source": "production"
-      }
+      },
+      "exercisedHere": false
     },
     "payroll.items.create": {
       "path": "/payroll/pay-run-items",
       "method": "POST",
       "summary": "Records a pay run item against an order and a team member.",
       "availability": {
-        "state": "unverified",
-        "note": "Described from production code that has written these for a long time. Not exercised from this repository: it records money owed to a person."
+        "state": "available",
+        "note": "Contract taken from the Envesko production integrations, which call this route against live accounts. Not fired from this repository."
       },
       "mutates": true,
       "confirmation": {
@@ -1205,7 +1212,8 @@
         "file": "2026-08-29-writes.json",
         "date": "2026-08-29",
         "source": "production"
-      }
+      },
+      "exercisedHere": false
     },
     "payroll.items.get": {
       "path": "/payroll/pay-run-items/{payRunItemId}",

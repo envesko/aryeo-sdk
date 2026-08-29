@@ -14,6 +14,30 @@ export interface AppointmentsAvailabilityGetParams {
   duration: number;
 }
 
+export interface AppointmentsCancelParams {
+  appointmentId: string;
+  reason?: string;
+  notify_customer?: boolean;
+  /** Echo the target's number to confirm. Cancels the appointment in Aryeo. Anybody holding that slot is told it is gone. */
+  confirm: string;
+}
+
+/**
+ * Books an appointment against an existing order.
+ *
+ * Aryeo stores whatever span it is given and does not derive length from the order's products, so the caller owns the number.
+ *
+ * The order must already carry an address or the booking is refused.
+ */
+export interface AppointmentsCreateParams {
+  order_id: string;
+  start_at: string;
+  end_at: string;
+  notify_customer?: boolean;
+  /** Echo the target's number to confirm. Creates a real appointment. The customer is notified unless notify_customer is false. */
+  confirm: string;
+}
+
 /**
  *
  * Carries can_cancel, can_reschedule and the lock period flags. Read them before attempting either mutation.
@@ -45,6 +69,21 @@ export interface AppointmentsListParams {
   include?: AppointmentsListInclude[];
   page?: number;
   perPage?: number;
+}
+
+/**
+ * Moves an appointment to a new start, keeping its length.
+ *
+ * Takes no duration. To change how long a shoot runs, cancel and rebook.
+ *
+ * Read can_reschedule and the lock period flags from appointments.get first.
+ */
+export interface AppointmentsRescheduleParams {
+  appointmentId: string;
+  start_at: string;
+  notify_customer?: boolean;
+  /** Echo the target's number to confirm. Moves a real appointment. Anybody holding the old slot is told it has changed. */
+  confirm: string;
 }
 
 /**
@@ -113,6 +152,22 @@ export interface CustomerUsersListParams {
   include?: CustomerUsersListInclude[];
   page?: number;
   perPage?: number;
+}
+
+/**
+ * Adds a customer, which in Aryeo means an agent or agency rather than an end consumer.
+ *
+ * A name field sent here is overwritten; Aryeo sets it from the first and last name.
+ *
+ * internal_notes is accepted and dropped.
+ */
+export interface CustomersCreateParams {
+  owner_first_name: string;
+  owner_last_name: string;
+  email: string;
+  phone?: string;
+  /** Echo the target's email to confirm. Aryeo emails the owner an invitation immediately and also creates a customer team. The record stays inactive until they accept. */
+  confirm: string;
 }
 
 export type CustomersGetInclude = "users" | "team_members" | "customer_teams" | "customer_team_memberships" | "customer_team_memberships.customer_team" | "custom_field_entries" | "custom_field_entries.custom_field" | "social_profiles" | "billing_address" | "sso_users";
@@ -221,6 +276,15 @@ export interface OrderItemsGetParams {
   include?: OrderItemsGetInclude[];
 }
 
+/**
+ * Publishes the listing and emails the agent.
+ */
+export interface OrdersDeliverParams {
+  orderId: string;
+  /** Echo the target's number to confirm. Publishes the Aryeo listing and emails the agent. They see it within seconds and it cannot be recalled. */
+  confirm: string;
+}
+
 export type OrdersGetInclude = "items" | "tags" | "customer" | "customerGroup" | "listing" | "appointments" | "appointments.users" | "unconfirmed_appointments" | "order_form" | "discounts" | "discounts.coupon" | "payments" | "taxes";
 
 /**
@@ -267,6 +331,36 @@ export interface OrdersListParams {
  */
 export interface OrdersPaymentInfoGetParams {
   orderId: string;
+}
+
+export interface OrdersTagsAddParams {
+  orderId: string;
+  tag_id: string;
+  /** Echo the target's number to confirm. Tagging an order can trigger downstream automation in connected systems. */
+  confirm: string;
+}
+
+export interface OrdersTagsRemoveParams {
+  orderId: string;
+  tagId: string;
+  /** Echo the target's number to confirm. Removing a tag can equally trigger or suppress downstream automation. */
+  confirm: string;
+}
+
+/**
+ * Records a pay run item against an order and a team member.
+ *
+ * Aryeo renders neither newlines nor HTML in the title, so multi-line narrative has to use a visual separator.
+ */
+export interface PayrollItemsCreateParams {
+  title: string;
+  amount: number;
+  submitted_date: string;
+  company_team_member_id: string;
+  order_id: string;
+  note?: string;
+  /** Echo the target's number to confirm. Records money owed against a real order and a real person. */
+  confirm: string;
 }
 
 export type PayrollItemsListInclude = "company_team_member" | "company_team_member.user" | "companyTeamMember" | "companyTeamMember.user" | "created_by_company_team_member" | "created_by_company_team_member.user" | "createdByCompanyTeamMember" | "createdByCompanyTeamMember.user" | "order" | "order.address" | "order.customer" | "owner" | "pay_run";

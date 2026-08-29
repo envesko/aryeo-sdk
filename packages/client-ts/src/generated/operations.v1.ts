@@ -15,6 +15,8 @@ export interface OperationDescriptor {
   availability: "available" | "unauthorised" | "absent" | "unverified";
   mutates?: boolean;
   confirmField?: string;
+  /** False when the contract comes from production usage rather than a request fired here. */
+  exercisedHere?: boolean;
   paginated?: boolean;
   perPageMax?: number;
   filters?: Record<string, FilterDescriptor>;
@@ -46,9 +48,10 @@ export const OPERATIONS = {
   "appointments.cancel": {
     "path": "/appointments/{appointmentId}/cancel",
     "method": "POST",
-    "availability": "unverified",
+    "availability": "available",
     "mutates": true,
     "confirmField": "number",
+    "exercisedHere": false,
     "body": [
       "reason",
       "notify_customer"
@@ -57,9 +60,10 @@ export const OPERATIONS = {
   "appointments.create": {
     "path": "/appointments/store",
     "method": "POST",
-    "availability": "unverified",
+    "availability": "available",
     "mutates": true,
     "confirmField": "number",
+    "exercisedHere": false,
     "body": [
       "order_id",
       "start_at",
@@ -127,9 +131,10 @@ export const OPERATIONS = {
   "appointments.reschedule": {
     "path": "/appointments/{appointmentId}/reschedule",
     "method": "PUT",
-    "availability": "unverified",
+    "availability": "available",
     "mutates": true,
     "confirmField": "number",
+    "exercisedHere": false,
     "body": [
       "start_at",
       "notify_customer"
@@ -216,9 +221,10 @@ export const OPERATIONS = {
   "customers.create": {
     "path": "/customers",
     "method": "POST",
-    "availability": "unverified",
+    "availability": "available",
     "mutates": true,
     "confirmField": "email",
+    "exercisedHere": false,
     "body": [
       "owner_first_name",
       "owner_last_name",
@@ -387,9 +393,10 @@ export const OPERATIONS = {
   "orders.deliver": {
     "path": "/orders/{orderId}/deliver",
     "method": "POST",
-    "availability": "unverified",
+    "availability": "available",
     "mutates": true,
-    "confirmField": "number"
+    "confirmField": "number",
+    "exercisedHere": false
   },
   "orders.get": {
     "path": "/orders/{orderId}",
@@ -498,9 +505,10 @@ export const OPERATIONS = {
   "orders.tags.add": {
     "path": "/orders/{orderId}/tags",
     "method": "POST",
-    "availability": "unverified",
+    "availability": "available",
     "mutates": true,
     "confirmField": "number",
+    "exercisedHere": false,
     "body": [
       "tag_id"
     ]
@@ -508,16 +516,18 @@ export const OPERATIONS = {
   "orders.tags.remove": {
     "path": "/orders/{orderId}/tags/{tagId}",
     "method": "DELETE",
-    "availability": "unverified",
+    "availability": "available",
     "mutates": true,
-    "confirmField": "number"
+    "confirmField": "number",
+    "exercisedHere": false
   },
   "payroll.items.create": {
     "path": "/payroll/pay-run-items",
     "method": "POST",
-    "availability": "unverified",
+    "availability": "available",
     "mutates": true,
     "confirmField": "number",
+    "exercisedHere": false,
     "body": [
       "title",
       "amount",
