@@ -39,7 +39,10 @@ jobs:
       - uses: actions/checkout@v5
       - name: Scan evidence for anything credential shaped
         run: |
-          if grep -rInE '(Bearer [A-Za-z0-9._-]{12,}|[A-Za-z0-9_-]{40,})' evidence/; then
+          # A credential is a long run with no word breaks. Snake_case field
+          # names are long too, so underscores and hyphens are what separate
+          # an identifier from a token.
+          if grep -rInE '(Bearer[[:space:]]+[A-Za-z0-9._-]{12,}|[A-Za-z0-9]{32,})' evidence/; then
             echo "Something in evidence/ looks like a credential. Scrub it before committing."
             exit 1
           fi
