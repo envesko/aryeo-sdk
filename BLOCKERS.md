@@ -1,0 +1,39 @@
+# Blockers
+
+Open questions that stop work, and unverified claims that must not be treated as settled. Anything here is a thing somebody has to decide or measure. Delete an entry when it is resolved, and move what was learned into the manifest.
+
+## Waiting on an account or an owner
+
+**npm organisation.** `@envesko` must exist and be owned before the first publish. Scoped packages default to private, so every published package also needs `"publishConfig": { "access": "public" }`. Nothing in this repo can be published until this exists.
+
+**Packagist vendor.** Claimed by the first submitted package, so it depends on the PHP mirror repository existing with a `composer.json` naming `envesko/aryeo-php` on its default branch.
+
+**Mirror automation.** The PHP package needs a read-only mirror repo and a job that pushes to it on tag, because Packagist expects one repository per package. Not yet written.
+
+## Unverified, must be measured before it ships
+
+**Appointment cancellation method.** Production code in the Envesko estate sends `POST /appointments/{id}/cancel`. An earlier MCP implementation sent `PUT`. Neither has been confirmed against a real cancellation, and both cannot be right. Resolve on a disposable appointment before generating this method. Recorded in the manifest as `appointments.cancel`, availability `unverified`.
+
+**Order delivery.** `POST /orders/{id}/deliver` publishes a listing and emails an agent. It is described from production code whose own author noted it was built but never tested against a live write. It stays `unverified` and generates no client method until somebody exercises it deliberately on an order that does not matter.
+
+**Order creation body.** `POST /orders` is known to exist; its accepted fields are not enumerated. Guessing them creates malformed orders on a real account, so the manifest records the route with no body schema.
+
+## Known behaviour with no route to a fix
+
+**No pay run collection.** Every candidate path returns the path-not-found 404, and the `pay_run` relationship comes back empty on the accounts checked. There is nothing to build a pay run listing against. Revisit if a future account shows populated pay runs.
+
+**Single pay run item is unauthorised.** `GET /payroll/pay-run-items/{id}` returns 401 for every id, with the same credential whose collection call succeeds. Clients resolve a single item through the collection instead.
+
+**Endpoints a standard key cannot reach.** `/blocks` and `/taxes` return 401, `/scheduling/item-groupings` returns 403, `/scheduling/assignment` returns 500. Recorded in `evidence/2026-08-29-catalogue.json`. Re-probe with a differently scoped key before concluding they are unavailable to everyone.
+
+**Regions.** `/regions` requires `filter[type]` and refuses every value tried, so the valid set cannot be discovered from outside. No client method is exposed.
+
+**Endpoints that do not validate includes.** `/tasks` and `/order-forms` accept an unknown include with a 200 rather than returning an allowlist, so their real expansions are undiscoverable. Both are marked `includesUnvalidated` and expose no include parameter.
+
+## Carried in from production experience
+
+These are not blockers so much as things the clients must not get wrong. They are recorded in `evidence/2026-08-29-writes.json` and belong in the transport layer.
+
+**Never log request headers.** A legacy error handler in the estate logged the full failing request for debugging, which put a live API key into a log table. Redaction belongs in the transport, not at each call site.
+
+**Do not retry a 404 on a known record.** An order deleted upstream returns 404 forever, and a checker retried it in a loop. Retry only what is the API talking about its own problems: 429, 5xx and timeouts. A 404 on a record that is known to have existed should surface as a typed deleted-upstream error so callers reconcile.

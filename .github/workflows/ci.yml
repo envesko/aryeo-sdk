@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  manifest:
+    name: Manifest and evidence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Validate the manifest
+        run: node tools/validate-manifest.mjs
+
+      # Generated code is committed so it shows up in review. If regenerating
+      # changes the tree, the commit is missing the output for its own change.
+      - name: Check generated output is current
+        run: |
+          if [ -f codegen/index.mjs ]; then
+            node codegen/index.mjs
+            if ! git diff --quiet -- packages; then
+              echo "Generated output is stale. Run npm run generate and commit the result."
+              git --no-pager diff --stat -- packages
+              exit 1
+            fi
+          else
+            echo "No emitters yet, skipping."
+          fi
+
+  secrets:
+    name: Evidence carries no credentials
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Scan evidence for anything credential shaped
+        run: |
+          if grep -rInE '(Bearer [A-Za-z0-9._-]{12,}|[A-Za-z0-9_-]{40,})' evidence/; then
+            echo "Something in evidence/ looks like a credential. Scrub it before committing."
+            exit 1
+          fi
+          echo "evidence/ is clean."
