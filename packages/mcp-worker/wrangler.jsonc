@@ -11,7 +11,7 @@
 	"kv_namespaces": [
 		{
 			"binding": "OAUTH_KV",
-			"id": "00c0cdea3d844927b4278102b33bfd69"
+			"id": "replace-with-your-own-namespace-id"
 		}
 	],
 	// Both are secrets, set with `wrangler secret put`, never in this file:
