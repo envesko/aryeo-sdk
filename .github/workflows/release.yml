@@ -78,38 +78,22 @@ jobs:
         if: ${{ !startsWith(github.ref, 'refs/tags/v') || inputs.dryRun }}
         run: npm publish --workspace packages/client-ts --dry-run --access public
 
-  php-mirror:
-    name: Push the PHP mirror
+  # Packagist reads composer.json from the root of this repository and picks up
+  # the tag on its own, so there is nothing to publish here. .gitattributes
+  # keeps everything that is not the PHP package out of the archive.
+  packagist:
+    name: Packagist
     needs: verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      # Packagist expects one repository per package, so the PHP package is
-      # split out to a read-only mirror. Development happens here; nobody
-      # commits to the mirror.
-      - name: Split and push
-        if: ${{ startsWith(github.ref, 'refs/tags/v') && !inputs.dryRun }}
-        env:
-          MIRROR_TOKEN: ${{ secrets.MIRROR_PUSH_TOKEN }}
+      - name: Confirm the archive carries only the PHP package
         run: |
-          if [ -z "$MIRROR_TOKEN" ]; then
-            echo "MIRROR_PUSH_TOKEN is not set. Skipping the mirror."
-            exit 0
+          git archive --format=tar HEAD | tar -t > /tmp/files.txt
+          if grep -qE '^(codegen|manifest|evidence|conformance|tools)/' /tmp/files.txt; then
+            echo "The Composer archive carries files it should not. Check .gitattributes export-ignore."
+            grep -E '^(codegen|manifest|evidence|conformance|tools)/' /tmp/files.txt | head
+            exit 1
           fi
-          git config user.name "Brandin"
-          git config user.email "brandin@envesko.com"
-          BRANCH=$(git subtree split --prefix=packages/client-php HEAD)
-          git push "https://x-access-token:${MIRROR_TOKEN}@github.com/envesko/aryeo-php.git" \
-            "${BRANCH}:refs/heads/main" --force
-          git push "https://x-access-token:${MIRROR_TOKEN}@github.com/envesko/aryeo-php.git" \
-            "${BRANCH}:refs/tags/${GITHUB_REF_NAME}"
-
-      - name: Dry run
-        if: ${{ !startsWith(github.ref, 'refs/tags/v') || inputs.dryRun }}
-        run: |
-          BRANCH=$(git subtree split --prefix=packages/client-php HEAD)
-          echo "Would push ${BRANCH} to envesko/aryeo-php"
-          git log --oneline -3 "$BRANCH"
+          echo "Archive contains $(wc -l < /tmp/files.txt) files:"
+          cat /tmp/files.txt

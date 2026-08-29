@@ -67,7 +67,7 @@ packages/     generated clients
 conformance/  one suite, run against every client
 ```
 
-The PHP package is mirrored read-only to its own repository on tag, because Packagist expects one repository per package. Development happens here.
+Packagist reads `composer.json` from the root of this repository, so the PHP package is published straight from here with no separate mirror. `.gitattributes` keeps the Node tooling, the manifest and the evidence out of the Composer archive.
 
 ## Contributing
 

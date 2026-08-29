@@ -35,9 +35,7 @@ but the key is worth fixing.
 
 **npm organisation.** `@envesko` must exist and be owned before the first publish. Scoped packages default to private, so every published package also needs `"publishConfig": { "access": "public" }`. Nothing in this repo can be published until this exists.
 
-**Packagist vendor.** Claimed by the first submitted package, so it depends on the PHP mirror repository existing with a `composer.json` naming `envesko/aryeo-php` on its default branch.
-
-**Mirror automation.** The PHP package needs a read-only mirror repo and a job that pushes to it on tag, because Packagist expects one repository per package. Not yet written.
+**Packagist vendor.** Claimed by the first submitted package. Submit this repository directly: `composer.json` is at the root and `.gitattributes` keeps everything that is not the PHP package out of the archive. No mirror repository is needed.
 
 ## Resolved
 

@@ -2,3 +2,21 @@
 *.png binary
 *.jpg binary
 *.svg text
+
+# Composer archives the repository, so anything not part of the PHP package is
+# excluded here. Without this a PHP user gets the whole monorepo in vendor/.
+/.github/            export-ignore
+/codegen/            export-ignore
+/conformance/        export-ignore
+/evidence/           export-ignore
+/manifest/           export-ignore
+/tools/              export-ignore
+/packages/client-ts/ export-ignore
+/packages/mcp-worker/ export-ignore
+/package.json        export-ignore
+/package-lock.json   export-ignore
+/.editorconfig       export-ignore
+/.env.example        export-ignore
+/.gitattributes      export-ignore
+/.gitignore          export-ignore
+/BLOCKERS.md         export-ignore

@@ -2,12 +2,24 @@
   "name": "envesko/aryeo-php",
   "description": "Typed PHP client for the Aryeo real estate media platform.",
   "type": "library",
+  "keywords": [
+    "aryeo",
+    "real-estate",
+    "api",
+    "client",
+    "sdk"
+  ],
+  "homepage": "https://github.com/envesko/aryeo-sdk",
   "license": "MIT",
   "authors": [
     {
       "name": "Envesko"
     }
   ],
+  "support": {
+    "issues": "https://github.com/envesko/aryeo-sdk/issues",
+    "source": "https://github.com/envesko/aryeo-sdk"
+  },
   "require": {
     "php": ">=8.1",
     "ext-curl": "*",
@@ -16,10 +28,10 @@
   },
   "autoload": {
     "psr-4": {
-      "Envesko\\Aryeo\\": "src/"
+      "Envesko\\Aryeo\\": "packages/client-php/src/"
     },
     "files": [
-      "src/Exceptions.php"
+      "packages/client-php/src/Exceptions.php"
     ]
   },
   "config": {

@@ -42,6 +42,4 @@ Anything that changes data requires you to echo an identifier off the target rec
 
 Full coverage, the API notes behind it and the TypeScript equivalent: [envesko/aryeo-sdk](https://github.com/envesko/aryeo-sdk).
 
-This repository is a read-only mirror. Issues and pull requests belong on the main repository.
-
 MIT, copyright Envesko. An independent project, not affiliated with Aryeo.
