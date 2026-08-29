@@ -1,20 +1,23 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "aryeo-mcp",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-08-01",
-
-  // Create your own and paste the id here:
-  //   wrangler kv namespace create OAUTH_KV
-  //
-  // It holds registered clients, short-lived authorisation codes and access
-  // token hashes. Nothing in it is readable as a working credential.
-  "kv_namespaces": [
-    { "binding": "OAUTH_KV", "id": "replace-with-your-own-namespace-id" }
-  ],
-
-  // Both are secrets, set with `wrangler secret put`, never in this file:
-  //   ARYEO_API_TOKEN     the Aryeo key this deployment acts with
-  //   MCP_APPROVAL_CODE   what you paste in the browser to approve a client
-  "observability": { "enabled": true }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "aryeo-mcp",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-08-01",
+	// Create your own and paste the id here:
+	//   wrangler kv namespace create OAUTH_KV
+	//
+	// It holds registered clients, short-lived authorisation codes and access
+	// token hashes. Nothing in it is readable as a working credential.
+	"kv_namespaces": [
+		{
+			"binding": "OAUTH_KV",
+			"id": "00c0cdea3d844927b4278102b33bfd69"
+		}
+	],
+	// Both are secrets, set with `wrangler secret put`, never in this file:
+	//   ARYEO_API_TOKEN     the Aryeo key this deployment acts with
+	//   MCP_APPROVAL_CODE   what you paste in the browser to approve a client
+	"observability": {
+		"enabled": true
+	}
 }

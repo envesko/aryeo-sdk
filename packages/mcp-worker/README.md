@@ -30,13 +30,22 @@ The build step matters: the worker imports the TypeScript client from this same 
 npx wrangler login
 ```
 
-**3. Make a KV namespace.** It holds registered clients, short-lived authorisation codes and access token hashes.
+**3. Make a KV namespace.** It holds registered clients, short-lived authorisation codes and access token hashes. Nothing in it is readable as a working credential.
 
 ```bash
 npx wrangler kv namespace create OAUTH_KV
 ```
 
-Copy the `id` it prints into `wrangler.jsonc`, replacing `replace-with-your-own-namespace-id`.
+Recent wrangler versions then ask two things:
+
+- *"Would you like Wrangler to add it on your behalf?"* Either answer works. **Yes** writes a new binding into `wrangler.jsonc`, so delete the placeholder entry that ships with this repo or you will have two bindings with the same name. **No** leaves you to paste the printed `id` over `replace-with-your-own-namespace-id` in the existing entry, which is the tidier result.
+- *"For local dev, do you want to connect to the remote resource instead of a local resource?"* Answer **N**. That only affects `wrangler dev`, and a local store means testing never writes clients and tokens into your deployed namespace.
+
+Check you ended up with exactly one:
+
+```bash
+grep -c '"binding": "OAUTH_KV"' wrangler.jsonc   # must print 1
+```
 
 **4. Set the two secrets.** These are stored encrypted in Cloudflare, never written to disk. Each command prompts for the value so it stays out of your shell history.
 
