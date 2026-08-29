@@ -4,6 +4,35 @@ Open questions that stop work, and unverified claims that must not be treated as
 
 ## Waiting on an account or an owner
 
+**Push is blocked on a missing token scope.** The repository exists at
+`envesko/aryeo-sdk` with `main` as the default branch, but the first push is
+rejected:
+
+    refusing to allow an OAuth App to create or update workflow
+    .github/workflows/ci.yml without `workflow` scope
+
+The gh token holds `repo`, `read:org`, `gist` and `admin:public_key`. Adding a
+scope needs the account owner to consent in a browser, so it cannot be done
+from a script:
+
+    gh auth refresh -h github.com -s workflow
+
+**Private vulnerability reporting cannot be enabled yet.** GitHub offers it on
+public repositories only, and the repository is currently private, so the API
+returns 404. `SECURITY.md` and `CODE_OF_CONDUCT.md` both route reports through
+it, and those links stay dead until the repository is made public. Enable it
+immediately after flipping visibility:
+
+    gh api -X PUT repos/envesko/aryeo-sdk/private-vulnerability-reporting
+
+Worth setting the same thing as an organisation default so future repositories
+get it without anybody remembering.
+
+**SSH to GitHub is not working** for this machine (`Permission denied
+(publickey)`), which is why `aryeo-mcp` cannot fetch or push. This repository
+uses an HTTPS remote and the gh credential helper instead, so it is unaffected,
+but the key is worth fixing.
+
 **npm organisation.** `@envesko` must exist and be owned before the first publish. Scoped packages default to private, so every published package also needs `"publishConfig": { "access": "public" }`. Nothing in this repo can be published until this exists.
 
 **Packagist vendor.** Claimed by the first submitted package, so it depends on the PHP mirror repository existing with a `composer.json` naming `envesko/aryeo-php` on its default branch.
