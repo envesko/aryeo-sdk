@@ -1,0 +1,13 @@
+# Everything, by default.
+*                       @envesko
+
+# The manifest is the source of truth for every generated client, so a change
+# here changes all of them at once.
+/manifest/              @envesko
+/evidence/              @envesko
+
+# Anything that decides what a mutating operation does, or that touches
+# credential handling.
+/tools/                 @envesko
+/.github/workflows/     @envesko
+/SECURITY.md            @envesko

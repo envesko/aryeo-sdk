@@ -1,0 +1,43 @@
+name: Bug in the SDK
+description: A client, the codegen or the tooling misbehaves.
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - "@envesko/aryeo-client"
+        - "envesko/aryeo-php"
+        - "@envesko/aryeo-mcp"
+        - "@envesko/aryeo-manifest"
+        - codegen or tooling
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Smallest example that shows it
+      description: Please remove tokens and customer data.
+      render: text
+
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime
+      placeholder: Node 22, PHP 8.3, Cloudflare Workers

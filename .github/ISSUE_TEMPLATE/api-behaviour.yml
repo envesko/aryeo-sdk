@@ -1,0 +1,56 @@
+name: API behaviour report
+description: The API does something the manifest does not describe, or describes wrongly.
+labels: ["manifest"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most valuable kind of report here. If your account behaves differently from ours, the manifest is wrong or incomplete.
+
+  - type: input
+    id: operation
+    attributes:
+      label: Operation
+      description: The manifest id, or the path if it is not described yet.
+      placeholder: orders.list, or GET /orders
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of difference
+      options:
+        - A filter behaves differently
+        - A relationship expansion is accepted or rejected differently
+        - A route exists or does not exist
+        - A response shape differs
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: measurement
+    attributes:
+      label: What you measured
+      description: |
+        Counts are what settle this. The unfiltered total, then the total with the parameter applied using a real value.
+        Please remove tokens, customer names and addresses.
+      placeholder: |
+        GET /orders                                 -> 5383
+        GET /orders?filter[thing]=<a real value>    -> 5383, so it did nothing
+    validations:
+      required: true
+
+  - type: input
+    id: scale
+    attributes:
+      label: Roughly how many records does the account hold
+      description: Behaviour on forty records often differs from behaviour on five thousand.
+      placeholder: about 5000 orders
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Plan tier, region, or anything about the account that might explain the difference.
