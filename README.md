@@ -55,7 +55,7 @@ Rate limit backoff, the hard page size ceiling, and the handful of endpoints tha
 
 Point Claude at your own Aryeo account in about five minutes. One deployment serves one account, yours, and there is no shared instance to sign up for.
 
-Every command runs on your own machine. Wrangler talks to Cloudflare for you; the worker runs on Cloudflare.
+Every command runs on your own machine. Wrangler talks to Cloudflare for you; the worker runs on Cloudflare. Names in capitals are literal: you paste the actual token at the prompt, not into the command.
 
 ```bash
 git clone https://github.com/envesko/aryeo-sdk && cd aryeo-sdk && npm install && npm run build

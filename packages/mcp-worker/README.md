@@ -12,6 +12,8 @@ Lets Claude and other agents work an Aryeo account directly, over the Model Cont
 
 You need [Node 20 or newer](https://nodejs.org), a free Cloudflare account, and an Aryeo API token. About five minutes.
 
+**Reading the commands:** anything in `<angle brackets>` is yours to replace. Everything else, including names in capitals like `ARYEO_API_TOKEN`, is typed exactly as written. Secret values are never part of a command; you paste them at a prompt.
+
 **1. Get the code and build it.**
 
 ```bash
@@ -32,6 +34,8 @@ npx wrangler login
 
 **3. Make a KV namespace.** It holds registered clients, short-lived authorisation codes and access token hashes. Nothing in it is readable as a working credential.
 
+`OAUTH_KV` here is a literal name, typed as written. It is what the worker calls this store in code.
+
 ```bash
 npx wrangler kv namespace create OAUTH_KV
 ```
@@ -47,18 +51,64 @@ Check you ended up with exactly one:
 grep -c '"binding": "OAUTH_KV"' wrangler.jsonc   # must print 1
 ```
 
-**4. Set the two secrets.** These are stored encrypted in Cloudflare, never written to disk. Each command prompts for the value so it stays out of your shell history.
+**4. Set the two secrets.**
+
+> **Type the names exactly as written.** `ARYEO_API_TOKEN` and `MCP_APPROVAL_CODE` are literal names, not placeholders. They are the labels Cloudflare files the secrets under, and the worker looks them up by those exact strings. Do not substitute your token into the command.
+>
+> Throughout this guide, anything you should replace is written in `<angle brackets>`. Everything else is typed as-is.
+
+Run the first command. It will print `Enter a secret value:` and wait. **Paste your Aryeo token at that prompt**, then press Enter once.
 
 ```bash
-npx wrangler secret put ARYEO_API_TOKEN     # your Aryeo API token
-npx wrangler secret put MCP_APPROVAL_CODE   # invent one, keep it somewhere safe
+npx wrangler secret put ARYEO_API_TOKEN
 ```
 
-For the approval code, generate something unguessable rather than choosing one:
+Then the second, and paste an approval code you have generated:
+
+```bash
+npx wrangler secret put MCP_APPROVAL_CODE
+```
+
+Generate that one rather than choosing it:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
 ```
+
+Confirm both landed. This prints names only, never values:
+
+```bash
+npx wrangler secret list
+```
+
+You want exactly these two:
+
+```
+ARYEO_API_TOKEN
+MCP_APPROVAL_CODE
+```
+
+If you see anything else, it was created by mistake. Remove it, and run the correct command again:
+
+```bash
+npx wrangler secret delete <the-wrong-name>
+```
+
+### On Windows, if the paste misbehaves
+
+In `cmd`, pasting a value that carries a trailing newline submits it early and the rest of the paste falls through to the shell, which then tries to run your token as a command and puts it in your shell history. If that happens, clear the history line and set the secret again.
+
+The reliable way on Windows is to pipe from a file, which never touches the prompt or your history:
+
+```bat
+echo|set /p="<your-token>">tok.txt
+npx wrangler secret put ARYEO_API_TOKEN < tok.txt
+del tok.txt
+```
+
+`echo|set /p=` writes with no trailing newline. That detail matters: a stray newline becomes part of the secret, and every Aryeo call then fails with a 401 for no visible reason.
+
+PowerShell handles the interactive prompt more predictably than `cmd`, so it is worth using if you have it.
 
 **5. Deploy.**
 
