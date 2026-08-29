@@ -1,14 +1,11 @@
 {
-  "name": "@envesko/aryeo-mcp",
+  "name": "aryeo-mcp-worker",
   "version": "0.1.0",
-  "description": "Model Context Protocol server for the Aryeo real estate media platform.",
+  "description": "Self-hosted Model Context Protocol server for Aryeo. Deployed from source, not published to npm.",
   "license": "MIT",
   "author": "Envesko",
   "type": "module",
   "private": true,
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "dev": "wrangler dev",

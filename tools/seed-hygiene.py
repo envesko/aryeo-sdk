@@ -203,7 +203,7 @@ body:
       options:
         - "@envesko/aryeo-client"
         - "envesko/aryeo-php"
-        - "@envesko/aryeo-mcp"
+        - "aryeo-mcp-worker"
         - "@envesko/aryeo-manifest"
         - codegen or tooling
     validations:

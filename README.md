@@ -14,7 +14,7 @@ You get a working integration on day one instead of week three.
 |---|---|
 | `@envesko/aryeo-client` | TypeScript client. Node, Bun, Cloudflare Workers, browser. Retries, paging helpers, full types. |
 | `envesko/aryeo-php` | The same surface for PHP, method for method. PSR-18 transport, PSR-3 logging, no framework required. |
-| `@envesko/aryeo-mcp` | Model Context Protocol server, so Claude and other agents can work an account directly. You host it yourself on Cloudflare Workers: see [the deployment guide](packages/mcp-worker/README.md). |
+| `aryeo-mcp-worker` | Model Context Protocol server, so Claude and other agents can work an account directly. You host it yourself on Cloudflare Workers: see [the deployment guide](packages/mcp-worker/README.md). |
 | `@envesko/aryeo-manifest` | The API description the other three are generated from. Useful on its own if you are writing a client in a language we do not ship yet. |
 
 ## Get started
