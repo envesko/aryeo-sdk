@@ -1,0 +1,21 @@
+{
+  "name": "@envesko/aryeo-client",
+  "version": "0.0.0",
+  "description": "Typed TypeScript client for the Aryeo real estate media platform.",
+  "license": "MIT",
+  "author": "Envesko",
+  "type": "module",
+  "private": true,
+  "publishConfig": { "access": "public" },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/envesko/aryeo-sdk.git",
+    "directory": "packages/client-ts"
+  }
+}

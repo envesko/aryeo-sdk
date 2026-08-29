@@ -6,30 +6,31 @@ on:
   pull_request:
 
 jobs:
-  manifest:
-    name: Manifest and evidence
+  build:
+    name: Manifest, generation and types
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-      - name: Validate the manifest
-        run: node tools/validate-manifest.mjs
+          cache: npm
+      - run: npm ci
 
-      # Generated code is committed so it shows up in review. If regenerating
-      # changes the tree, the commit is missing the output for its own change.
-      - name: Check generated output is current
+      # Validates the manifest, scans evidence for credentials, proves the
+      # generated output is not stale, and typechecks what was generated.
+      - run: npm test
+
+      # npm test proves generation is current against the committed tree. This
+      # proves the tree is actually what the emitters produce, by regenerating
+      # and diffing, which catches a hand edit to generated code.
+      - name: Generated code is not hand edited
         run: |
-          if [ -f codegen/index.mjs ]; then
-            node codegen/index.mjs
-            if ! git diff --quiet -- packages; then
-              echo "Generated output is stale. Run npm run generate and commit the result."
-              git --no-pager diff --stat -- packages
-              exit 1
-            fi
-          else
-            echo "No emitters yet, skipping."
+          npm run generate
+          if ! git diff --quiet -- packages; then
+            echo "Generated output differs after regeneration. Do not edit generated files by hand."
+            git --no-pager diff --stat -- packages
+            exit 1
           fi
 
   secrets:

@@ -19,7 +19,11 @@
     "validate": "node tools/validate-manifest.mjs",
     "generate": "node codegen/index.mjs",
     "check": "npm run validate && npm run generate -- --check",
-    "test": "npm run validate && npm run scan",
-    "scan": "node tools/scan-evidence.mjs"
+    "test": "npm run validate && npm run scan && npm run check && npm run typecheck",
+    "scan": "node tools/scan-evidence.mjs",
+    "typecheck": "tsc --noEmit -p packages/client-ts/tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }
