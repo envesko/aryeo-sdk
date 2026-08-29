@@ -23,7 +23,8 @@
     "scan": "node tools/scan-evidence.mjs",
     "typecheck": "tsc --noEmit -p packages/client-ts/tsconfig.json",
     "build": "tsc -p packages/client-ts/tsconfig.json",
-    "conformance": "npm run build && node --test \"conformance/cases/*.test.mjs\""
+    "conformance": "npm run build && node --test \"conformance/cases/*.test.mjs\"",
+    "conformance:php": "php conformance/cases/php-client.php"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

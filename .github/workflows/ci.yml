@@ -46,3 +46,25 @@ jobs:
 
       - name: Scan evidence for credentials
         run: node tools/scan-evidence.mjs
+
+  php:
+    name: PHP client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          extensions: curl, json, mbstring
+          coverage: none
+
+      # Generated PHP is committed, so it can be linted without regenerating.
+      - name: Lint every PHP file
+        run: |
+          for f in packages/client-php/src/*.php packages/client-php/src/Generated/*.php; do
+            php -l "$f" > /dev/null || exit 1
+          done
+          echo "all PHP files parse"
+
+      - name: Conformance
+        run: php conformance/cases/php-client.php
