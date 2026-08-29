@@ -27,6 +27,7 @@
     "conformance:php": "php conformance/cases/php-client.php"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
     "typescript": "^5.9.3"
   }
 }

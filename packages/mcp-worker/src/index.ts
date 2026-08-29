@@ -4,6 +4,10 @@
  * Model Context Protocol over HTTP, so Claude and other agents can work an
  * Aryeo account directly. Deploys to Cloudflare Workers.
  *
+ * Self-hosted: one deployment serves one Aryeo account, the one whose key the
+ * operator sets as a secret. There are no user accounts, so authorisation is
+ * the operator proving the deployment is theirs. See oauth.ts.
+ *
  * Every tool is generated from the manifest and dispatched through the same
  * client a TypeScript integration would use, which is the point: the tool
  * surface cannot drift from the API, and the protections a caller gets are the
@@ -15,16 +19,14 @@
 import { AryeoCore, AryeoError } from "@envesko/aryeo-client";
 import type { OperationId } from "@envesko/aryeo-client";
 import { TOOLS, TOOLS_BY_NAME } from "./generated/tools.v1.js";
+import { handleOAuth, isAuthorised, type OAuthEnv } from "./oauth.js";
 
-export interface Env {
-  /** The Aryeo API token this server acts with. */
-  ARYEO_API_TOKEN: string;
+export interface Env extends OAuthEnv {
   /**
-   * Shared secret a client presents as a bearer token. Without it the server
-   * refuses every request: an unprotected deployment hands anybody who finds
-   * the URL full access to the Aryeo account behind it.
+   * The Aryeo API token this deployment acts with. One deployment, one
+   * account: this server is meant to be self-hosted by whoever owns the key.
    */
-  MCP_AUTH_TOKEN: string;
+  ARYEO_API_TOKEN: string;
 }
 
 const PROTOCOL_VERSION = "2024-11-05";
@@ -48,24 +50,6 @@ const result = (id: JsonRpcRequest["id"], value: unknown): Response =>
 
 const error = (id: JsonRpcRequest["id"], code: number, message: string): Response =>
   json({ jsonrpc: "2.0", id: id ?? null, error: { code, message } });
-
-/**
- * Constant-time comparison, so a caller cannot learn the secret one character
- * at a time from response timing.
- */
-function secretsMatch(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-function authorised(request: Request, env: Env): boolean {
-  if (!env.MCP_AUTH_TOKEN) return false;
-  const header = request.headers.get("Authorization") ?? "";
-  const presented = header.startsWith("Bearer ") ? header.slice(7) : "";
-  return presented.length > 0 && secretsMatch(presented, env.MCP_AUTH_TOKEN);
-}
 
 async function callTool(
   env: Env,
@@ -102,16 +86,24 @@ export default {
       return json({ ok: true, server: SERVER.name, tools: TOOLS.length });
     }
 
+    // Discovery, registration, approval and token exchange.
+    const oauth = await handleOAuth(request, env, url);
+    if (oauth !== null) return oauth;
+
     if (request.method !== "POST") {
       return json({ error: "Send MCP requests as POST." }, 405);
     }
 
-    if (!authorised(request, env)) {
+    if (!(await isAuthorised(request, env))) {
+      // The resource metadata pointer is what lets a client discover where to
+      // authenticate rather than simply failing.
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: {
           "Content-Type": "application/json",
-          "WWW-Authenticate": `Bearer realm="${SERVER.name}"`,
+          "WWW-Authenticate":
+            `Bearer realm="${SERVER.name}", ` +
+            `resource_metadata="${url.origin}/.well-known/oauth-protected-resource"`,
         },
       });
     }

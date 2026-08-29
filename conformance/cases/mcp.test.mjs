@@ -132,23 +132,55 @@ describe("tool names are stable and well formed", () => {
   });
 });
 
-describe("the server refuses to run unprotected", () => {
+describe("the server cannot be reached without authorisation", () => {
   const worker = readFileSync(
     new URL("../../packages/mcp-worker/src/index.ts", import.meta.url),
     "utf8",
   );
+  const oauth = readFileSync(
+    new URL("../../packages/mcp-worker/src/oauth.ts", import.meta.url),
+    "utf8",
+  );
 
-  it("treats a missing auth secret as a refusal, not as open access", () => {
-    assert.match(worker, /if \(!env\.MCP_AUTH_TOKEN\) return false;/);
+  it("checks a token on every MCP request", () => {
+    assert.match(worker, /await isAuthorised\(request, env\)/);
   });
 
-  it("compares the bearer in constant time", () => {
-    assert.match(worker, /secretsMatch/);
-    assert.match(worker, /diff \|= a\.charCodeAt\(i\) \^ b\.charCodeAt\(i\)/);
-  });
-
-  it("answers an unauthorised request with a 401 and a challenge", () => {
+  it("answers an unauthorised request with a 401 and points at the metadata", () => {
     assert.match(worker, /status: 401/);
     assert.match(worker, /WWW-Authenticate/);
+    assert.match(worker, /oauth-protected-resource/);
+  });
+
+  it("requires PKCE with S256, so an intercepted code is useless alone", () => {
+    assert.match(oauth, /method !== "S256"/);
+    assert.match(oauth, /code_challenge_methods_supported: \["S256"\]/);
+  });
+
+  it("allowlists where a code may be delivered", () => {
+    assert.match(oauth, /ALLOWED_REDIRECT_HOSTS/);
+    assert.match(oauth, /isAllowedRedirect/);
+    // Dynamic registration means anyone can register a client, so the
+    // redirect target is what actually protects this.
+    assert.match(oauth, /invalid_redirect_uri/);
+  });
+
+  it("compares the approval code in constant time", () => {
+    assert.match(oauth, /diff \|= a\.charCodeAt\(i\) \^ b\.charCodeAt\(i\)/);
+  });
+
+  it("stores access tokens as hashes, not as usable credentials", () => {
+    assert.match(oauth, /token:\$\{await sha256Hex\(accessToken\)\}/);
+    assert.match(oauth, /token:\$\{await sha256Hex\(presented\)\}/);
+  });
+
+  it("spends an authorisation code before validating it", () => {
+    const consume = oauth.indexOf("OAUTH_KV.delete(`code:${code}`)");
+    const verify = oauth.indexOf("The code verifier does not match");
+    assert.ok(consume > 0 && verify > consume, "the code must be single use");
+  });
+
+  it("never renders an approval code back into the page", () => {
+    assert.match(oauth, /if \(key === "approval_code"\) return;/);
   });
 });

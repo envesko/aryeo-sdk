@@ -4,11 +4,17 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-08-01",
 
-  // Both are secrets, set with `wrangler secret put`, never in this file:
-  //   ARYEO_API_TOKEN  the Aryeo key this server acts with
-  //   MCP_AUTH_TOKEN   the bearer a client must present
+  // Create your own and paste the id here:
+  //   wrangler kv namespace create OAUTH_KV
   //
-  // Without MCP_AUTH_TOKEN the server refuses every request. An unprotected
-  // deployment hands anybody who finds the URL full access to the account.
+  // It holds registered clients, short-lived authorisation codes and access
+  // token hashes. Nothing in it is readable as a working credential.
+  "kv_namespaces": [
+    { "binding": "OAUTH_KV", "id": "replace-with-your-own-namespace-id" }
+  ],
+
+  // Both are secrets, set with `wrangler secret put`, never in this file:
+  //   ARYEO_API_TOKEN     the Aryeo key this deployment acts with
+  //   MCP_APPROVAL_CODE   what you paste in the browser to approve a client
   "observability": { "enabled": true }
 }

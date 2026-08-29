@@ -14,7 +14,7 @@ You get a working integration on day one instead of week three.
 |---|---|
 | `@envesko/aryeo-client` | TypeScript client. Node, Bun, Cloudflare Workers, browser. Retries, paging helpers, full types. |
 | `envesko/aryeo-php` | The same surface for PHP, method for method. PSR-18 transport, PSR-3 logging, no framework required. |
-| `@envesko/aryeo-mcp` | Model Context Protocol server, so Claude and other agents can work an account directly. Deploys to Cloudflare Workers. |
+| `@envesko/aryeo-mcp` | Model Context Protocol server, so Claude and other agents can work an account directly. You host it yourself on Cloudflare Workers: see [the deployment guide](packages/mcp-worker/README.md). |
 | `@envesko/aryeo-manifest` | The API description the other three are generated from. Useful on its own if you are writing a client in a language we do not ship yet. |
 
 ## Get started
@@ -50,6 +50,21 @@ Filters are recorded with the effect they actually have. Where a parameter is ac
 Date windows are converted to the instants the API compares against, so a query for one local day returns that day and not a window shifted by your offset.
 
 Rate limit backoff, the hard page size ceiling, and the handful of endpoints that behave unlike the rest are handled for you.
+
+## Run the MCP server
+
+Point Claude at your own Aryeo account in about five minutes. One deployment serves one account, yours, and there is no shared instance to sign up for.
+
+```bash
+git clone https://github.com/envesko/aryeo-sdk && cd aryeo-sdk && npm install && npm run build
+cd packages/mcp-worker
+npx wrangler kv namespace create OAUTH_KV   # paste the id into wrangler.jsonc
+npx wrangler secret put ARYEO_API_TOKEN
+npx wrangler secret put MCP_APPROVAL_CODE
+npx wrangler deploy
+```
+
+Full walkthrough, including what the approval code is for and how to revoke access: [packages/mcp-worker/README.md](packages/mcp-worker/README.md).
 
 ## Coverage
 
