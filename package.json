@@ -4,14 +4,22 @@
   "description": "Typed clients for the Aryeo real estate media platform, generated from one verified description of the API.",
   "license": "MIT",
   "author": "Envesko",
-  "repository": { "type": "git", "url": "git+https://github.com/envesko/aryeo-sdk.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/envesko/aryeo-sdk.git"
+  },
   "type": "module",
-  "workspaces": ["packages/*"],
-  "engines": { "node": ">=20" },
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "validate": "node tools/validate-manifest.mjs",
     "generate": "node codegen/index.mjs",
     "check": "npm run validate && npm run generate -- --check",
-    "test": "npm run validate"
+    "test": "npm run validate && npm run scan",
+    "scan": "node tools/scan-evidence.mjs"
   }
 }
