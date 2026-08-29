@@ -1,0 +1,99 @@
+{
+  "probedAt": "2026-08-29",
+  "generation": "v1",
+  "account": {
+    "kind": "enterprise",
+    "note": "Identifiers and customer data removed. Counts are real."
+  },
+  "endpoints": [
+    {
+      "path": "/products",
+      "total": 13,
+      "filters": [
+        {
+          "param": "filter[type]",
+          "value": "main",
+          "total": 8,
+          "verdict": "honoured"
+        }
+      ],
+      "includeAllowlist": "categories, order_form_categories, order_form_categories.order_form, providers",
+      "note": "no single product route; GET /products/{id} returns the plain text 404"
+    },
+    {
+      "path": "/product-categories",
+      "http": 200
+    },
+    {
+      "path": "/coupons",
+      "total": 1,
+      "includeAllowlist": "promotion_codes, discountables"
+    },
+    {
+      "path": "/order-forms",
+      "total": 3,
+      "includesUnvalidated": true,
+      "note": "an unknown include returns 200 instead of an allowlist"
+    },
+    {
+      "path": "/territories",
+      "total": 2
+    },
+    {
+      "path": "/tags",
+      "total": 22,
+      "filters": [
+        {
+          "param": "filter[type]",
+          "value": "order",
+          "total": 16,
+          "verdict": "honoured"
+        },
+        {
+          "param": "filter[type]",
+          "value": "product",
+          "total": 3,
+          "verdict": "honoured"
+        },
+        {
+          "param": "filter[type]",
+          "value": "customer_team",
+          "total": 1,
+          "verdict": "honoured"
+        }
+      ],
+      "recordKeys": [
+        "color",
+        "font_color",
+        "id",
+        "name",
+        "object",
+        "slug",
+        "type"
+      ]
+    }
+  ],
+  "unreachableWithStandardKey": [
+    {
+      "path": "/blocks",
+      "http": 401
+    },
+    {
+      "path": "/taxes",
+      "http": 401
+    },
+    {
+      "path": "/scheduling/item-groupings",
+      "http": 403
+    },
+    {
+      "path": "/scheduling/assignment",
+      "http": 500
+    },
+    {
+      "path": "/regions",
+      "http": 422,
+      "note": "filter[type] is required and scheduling, delivery, service and appointment were all refused as invalid, so the valid set is undiscoverable from outside"
+    }
+  ]
+}

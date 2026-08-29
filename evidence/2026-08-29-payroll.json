@@ -1,0 +1,122 @@
+{
+  "probedAt": "2026-08-29",
+  "generation": "v1",
+  "account": {
+    "kind": "enterprise",
+    "note": "Identifiers and customer data removed. Counts are real."
+  },
+  "endpoint": "/payroll/pay-run-items",
+  "unfilteredTotal": 2404,
+  "filters": [
+    {
+      "param": "filter[order_ids][0]",
+      "total": 1,
+      "verdict": "honoured",
+      "note": "every returned item belonged to the requested order"
+    },
+    {
+      "param": "filter[order_id]",
+      "total": 2404,
+      "verdict": "ignored",
+      "note": "singular spelling does nothing"
+    },
+    {
+      "param": "filter[company_team_member_ids][0]",
+      "total": 2,
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[company_team_member_id]",
+      "total": 2404,
+      "verdict": "ignored"
+    },
+    {
+      "param": "filter[user_ids][0]",
+      "total": 2404,
+      "verdict": "ignored"
+    },
+    {
+      "param": "filter[submitted_date_gte]+[_lte]",
+      "value": "one month",
+      "total": 287,
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[created_at_gte]+[_lte]",
+      "total": 2404,
+      "verdict": "ignored"
+    },
+    {
+      "param": "filter[search]",
+      "total": 2404,
+      "verdict": "ignored"
+    },
+    {
+      "param": "filter[status]",
+      "http": 422,
+      "verdict": "rejected",
+      "body": "The selected filter.status is invalid."
+    },
+    {
+      "param": "sort",
+      "http": 400,
+      "verdict": "rejected",
+      "body": "Allowed sort(s) are created_at."
+    }
+  ],
+  "recordShape": {
+    "default": [
+      "object",
+      "id",
+      "title",
+      "amount",
+      "status",
+      "submitted_date"
+    ],
+    "note": "no order and no team member without includes; amount is in minor units",
+    "statusValuesObserved": {
+      "OUTSTANDING": 10,
+      "SUBMITTED": 86,
+      "DRAFT": 4
+    }
+  },
+  "includeAllowlist": "companyTeamMember, companyTeamMemberCount, companyTeamMemberExists, companyTeamMember.user, createdByCompanyTeamMember, createdByCompanyTeamMemberCount, createdByCompanyTeamMemberExists, createdByCompanyTeamMember.user, order, orderCount, orderExists, order.address, order.customer, owner, ownerCount, ownerExists, created_by_company_team_member, created_by_company_team_member.user, company_team_member, company_team_member.user, pay_run",
+  "routes": [
+    {
+      "path": "/payroll/pay-run-items/{id}",
+      "http": 401,
+      "verdict": "unauthorised",
+      "note": "refused for every id tried, with the same credential whose collection call succeeds"
+    },
+    {
+      "path": "/payroll/pay-runs",
+      "http": 404,
+      "verdict": "absent"
+    },
+    {
+      "path": "/pay-runs",
+      "http": 404,
+      "verdict": "absent"
+    },
+    {
+      "path": "/payrolls",
+      "http": 404,
+      "verdict": "absent"
+    },
+    {
+      "path": "/payroll-items",
+      "http": 404,
+      "verdict": "absent"
+    },
+    {
+      "path": "/payroll/runs",
+      "http": 404,
+      "verdict": "absent"
+    }
+  ],
+  "payRunInclude": {
+    "accepted": true,
+    "value": null,
+    "note": "returned null on every row sampled"
+  }
+}

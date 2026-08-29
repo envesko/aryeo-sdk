@@ -1,0 +1,70 @@
+{
+  "probedAt": "2026-08-29",
+  "generation": "v1",
+  "account": {
+    "kind": "enterprise",
+    "note": "Identifiers and customer data removed. Counts are real."
+  },
+  "source": "production",
+  "note": "Read out of code running against live accounts in the Envesko estate. NOT exercised by this repository. No write request has been issued from here against any account.",
+  "operations": [
+    {
+      "path": "/orders/{id}/deliver",
+      "method": "POST",
+      "effect": "publishes the listing and emails the agent",
+      "origin": "opc src/Oms/Domain/Orders/AryeoWrites.php",
+      "upstreamCaveat": "the originating class states it was built but not tested against a live write"
+    },
+    {
+      "path": "/orders",
+      "method": "POST",
+      "effect": "creates an order upstream",
+      "origin": "opc src/Oms/Domain/Orders/AryeoWrites.php",
+      "bodyFields": "not enumerated; guessing them creates malformed orders on a real account"
+    },
+    {
+      "path": "/appointments/{id}/cancel",
+      "method": "POST",
+      "effect": "cancels an appointment",
+      "origin": "opc src/Oms/Domain/Orders/AryeoWrites.php",
+      "conflict": "an earlier MCP implementation used PUT for this route. Neither has been confirmed. Resolve before generating."
+    },
+    {
+      "path": "/orders/{id}/tags",
+      "method": "POST",
+      "body": {
+        "tag_id": "uuid"
+      },
+      "origin": "opc usersc/includes/custom_functions.php addTagToOrder"
+    },
+    {
+      "path": "/orders/{id}/tags/{tagId}",
+      "method": "DELETE",
+      "origin": "opc usersc/includes/custom_functions.php removeTagFromOrder"
+    },
+    {
+      "path": "/payroll/pay-run-items",
+      "method": "POST",
+      "body": {
+        "title": "string",
+        "amount": "minor units",
+        "submitted_date": "date",
+        "company_team_member_id": "uuid",
+        "order_id": "uuid",
+        "note": "string, optional"
+      },
+      "origin": "opc usersc/includes/custom_functions.php createAryeoPayRunItem",
+      "note": "a rejected note field is retried merged into title"
+    }
+  ],
+  "operationalFindings": [
+    {
+      "finding": "A legacy error handler logged the full failing request including headers, which put a live API key into a log table.",
+      "rule": "Redact credentials at the transport layer, never log request headers."
+    },
+    {
+      "finding": "Orders deleted upstream return 404 forever, and a checker retried them in a loop.",
+      "rule": "Retry only what is the API talking about its own problems: 429, 5xx and timeouts. Surface a 404 on a known record as a typed deleted-upstream error so callers reconcile instead of retrying."
+    }
+  ]
+}

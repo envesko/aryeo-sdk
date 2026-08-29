@@ -1,0 +1,119 @@
+{
+  "probedAt": "2026-08-29",
+  "generation": "v1",
+  "account": {
+    "kind": "enterprise",
+    "note": "Identifiers and customer data removed. Counts are real."
+  },
+  "endpoint": "/appointments",
+  "unfilteredTotal": 5422,
+  "filters": [
+    {
+      "param": "filter[start_at_gte]+[_lte]",
+      "value": "7 day window",
+      "total": 66,
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[search]",
+      "total": 3,
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[appointment_start_at_gte]+[_lte]",
+      "total": 5422,
+      "verdict": "ignored",
+      "note": "This is the /orders spelling. Accepted here and ignored."
+    },
+    {
+      "param": "filter[status]",
+      "value": "scheduled",
+      "total": 5422,
+      "verdict": "ignored"
+    },
+    {
+      "param": "filter[appointment_status]",
+      "value": "scheduled",
+      "total": 5422,
+      "verdict": "ignored"
+    },
+    {
+      "param": "filter[tense]",
+      "http": 422,
+      "verdict": "rejected",
+      "body": "The selected filter.tense is invalid."
+    }
+  ],
+  "includeAllowlist": "order.customerGroup, owner, appointment_attendances, appointment_attendances.company_team_member, users, company, companyCount, companyExists, items, itemsCount, itemsExists, companyTeamMembers, companyTeamMembersCount, companyTeamMembersExists, companyTeamMembers.user, companyTeamMembers.restrictedUsers, order, orderCount, orderExists, order.address, order.customer, order.customer.ownerCustomerTeamMember, order.customer.ownerCustomerTeamMember.user, order.customerTeamMembership, order.customerTeamMembership.customerTeam, order.customerTeamMembership.user, order.listing, order.items, order.items.appointment, order.tags",
+  "detailRoute": {
+    "path": "/appointments/{id}",
+    "http": 200,
+    "keys": [
+      "appointment_attendances",
+      "can_cancel",
+      "can_reschedule",
+      "customer_choice_enabled",
+      "deleted_at",
+      "description",
+      "duration",
+      "end_at",
+      "id",
+      "initial_assigned_company_team_member_id",
+      "initial_requested_company_team_member_ids",
+      "is_within_cancellation_lock_period",
+      "is_within_rescheduling_lock_period",
+      "items",
+      "late_cancellation_fee",
+      "order",
+      "postponed_at",
+      "preference_type",
+      "previous_start_at",
+      "requires_confirmation",
+      "rescheduled_at",
+      "start_at",
+      "status",
+      "title",
+      "updated_at",
+      "user_has_appointments_manage_permission"
+    ]
+  },
+  "availabilityRoute": {
+    "path": "/appointments/{id}/availability",
+    "requires": [
+      "assignee_id",
+      "duration"
+    ],
+    "http": 200,
+    "body": {
+      "has_conflicts": false
+    }
+  },
+  "scheduling": [
+    {
+      "path": "/scheduling/available-dates",
+      "requires": [
+        "timezone",
+        "interval",
+        "filter[start_at]",
+        "filter[end_at]"
+      ],
+      "http": 200,
+      "result": "6 available dates over a 7 day window",
+      "note": "filter[timeframe] is named in validation messages but every value tried was refused"
+    },
+    {
+      "path": "/scheduling/available-timeslots",
+      "requires": [
+        "timezone",
+        "date",
+        "interval",
+        "duration"
+      ],
+      "note": "one day per request; passing an order id is refused"
+    }
+  ],
+  "timezone": {
+    "storage": "UTC",
+    "note": "A local calendar day must be converted to instants before filtering, or the window lands hours out."
+  }
+}

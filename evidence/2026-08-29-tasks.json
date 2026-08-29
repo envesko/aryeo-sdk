@@ -1,0 +1,52 @@
+{
+  "probedAt": "2026-08-29",
+  "generation": "v1",
+  "account": {
+    "kind": "enterprise",
+    "note": "Identifiers and customer data removed. Counts are real."
+  },
+  "endpoint": "/tasks",
+  "unfilteredTotal": 8699,
+  "recordKeys": [
+    "completed_at",
+    "description",
+    "due_at",
+    "id",
+    "is_completed",
+    "name",
+    "pay_run_item_amount",
+    "quantity"
+  ],
+  "filters": [
+    {
+      "param": "filter[search]",
+      "value": "edit",
+      "total": 26,
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[order_id]",
+      "total": 8699,
+      "verdict": "ignored"
+    },
+    {
+      "param": "filter[order_ids][0]",
+      "total": 8699,
+      "verdict": "ignored"
+    },
+    {
+      "param": "filter[status]",
+      "value": "incomplete",
+      "total": 8699,
+      "verdict": "ignored"
+    },
+    {
+      "param": "filter[is_complete]",
+      "value": "false",
+      "total": 8699,
+      "verdict": "ignored"
+    }
+  ],
+  "includesUnvalidated": true,
+  "note": "An unknown include returns 200 rather than an allowlist, so the expansions cannot be discovered. Tasks for one order are reachable via /order-items/{id}?include=tasks."
+}

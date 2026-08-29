@@ -1,0 +1,1410 @@
+{
+  "$schema": "../schema.json",
+  "generation": "v1",
+  "baseUrl": "https://api.aryeo.com/v1",
+  "auth": {
+    "scheme": "bearer",
+    "header": "Authorization"
+  },
+  "defaults": {
+    "perPage": 100,
+    "perPageMax": 100,
+    "filterStyle": "bracketed",
+    "enumCase": "lower"
+  },
+  "operations": {
+    "orders.list": {
+      "path": "/orders",
+      "method": "GET",
+      "summary": "The job record: what was bought, when it is shot, who shoots it.",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "perPageMax": 100,
+      "filters": {
+        "search": {
+          "wire": "filter[search]",
+          "state": "honoured",
+          "type": "string",
+          "note": "Matches order number and address.",
+          "evidence": {
+            "file": "2026-08-29-orders.json",
+            "date": "2026-08-29",
+            "measurement": "1 of 5383 for a known order number"
+          }
+        },
+        "appointmentStartAtGte": {
+          "wire": "filter[appointment_start_at_gte]",
+          "state": "honoured",
+          "type": "datetime",
+          "evidence": {
+            "file": "2026-08-29-orders.json",
+            "date": "2026-08-29",
+            "measurement": "278 of 5383 over 30 days"
+          }
+        },
+        "appointmentStartAtLte": {
+          "wire": "filter[appointment_start_at_lte]",
+          "state": "honoured",
+          "type": "datetime",
+          "evidence": {
+            "file": "2026-08-29-orders.json",
+            "date": "2026-08-29",
+            "measurement": "278 of 5383 over 30 days"
+          }
+        },
+        "createdAtGte": {
+          "wire": "filter[created_at_gte]",
+          "state": "honoured",
+          "type": "datetime",
+          "evidence": {
+            "file": "2026-08-29-orders.json",
+            "date": "2026-08-29",
+            "measurement": "310 of 5383 over 30 days"
+          }
+        },
+        "createdAtLte": {
+          "wire": "filter[created_at_lte]",
+          "state": "honoured",
+          "type": "datetime",
+          "evidence": {
+            "file": "2026-08-29-orders.json",
+            "date": "2026-08-29",
+            "measurement": "310 of 5383 over 30 days"
+          }
+        },
+        "appointmentStatus": {
+          "wire": "filter[appointment_status]",
+          "state": "honoured",
+          "type": "string",
+          "enum": [
+            "scheduled",
+            "unscheduled",
+            "canceled"
+          ],
+          "evidence": {
+            "file": "2026-08-29-orders.json",
+            "date": "2026-08-29",
+            "measurement": "5072 of 5383 for scheduled"
+          }
+        },
+        "userIds": {
+          "wire": "filter[user_ids]",
+          "state": "honoured",
+          "type": "array",
+          "arrayForm": "indexed",
+          "note": "Company team member ids. This is how you ask what one photographer shot.",
+          "evidence": {
+            "file": "2026-08-29-orders.json",
+            "date": "2026-08-29",
+            "measurement": "partitions across 7 members: 0, 630, 38, 0, 3025, 275, 1342"
+          }
+        },
+        "status": {
+          "wire": "filter[status]",
+          "state": "honoured",
+          "type": "string",
+          "enum": [
+            "open",
+            "draft",
+            "canceled",
+            "confirmed"
+          ],
+          "note": "Filters the order lifecycle, which is not the same field as the response status. Most live orders are open even though their response status reads CONFIRMED."
+        },
+        "paymentStatus": {
+          "wire": "filter[payment_status]",
+          "state": "honoured",
+          "type": "string",
+          "enum": [
+            "paid",
+            "unpaid",
+            "partially_paid"
+          ]
+        },
+        "fulfillmentStatus": {
+          "wire": "filter[fulfillment_status]",
+          "state": "honoured",
+          "type": "string",
+          "enum": [
+            "fulfilled",
+            "unfulfilled",
+            "partially_fulfilled"
+          ]
+        },
+        "listingId": {
+          "state": "ignored",
+          "type": "uuid",
+          "strategy": "client-side",
+          "note": "filter[listing_id], filter[listing] and filter[listing_ids][] were each accepted and each returned the full collection.",
+          "evidence": {
+            "file": "2026-08-29-orders.json",
+            "date": "2026-08-29",
+            "measurement": "5383 of 5383, unchanged"
+          }
+        }
+      },
+      "sorts": [
+        "appointment_start",
+        "-appointment_start",
+        "created_at",
+        "-created_at"
+      ],
+      "includes": [
+        "items",
+        "itemsCount",
+        "itemsExists",
+        "tags",
+        "tagsCount",
+        "tagsExists",
+        "customer",
+        "customerGroup",
+        "listing",
+        "appointments",
+        "appointments.users",
+        "unconfirmed_appointments",
+        "order_form",
+        "discounts",
+        "discounts.coupon",
+        "payments",
+        "taxes"
+      ],
+      "responseEnums": {
+        "status": [
+          "CONFIRMED",
+          "DRAFT",
+          "CANCELED"
+        ],
+        "payment_status": [
+          "PAID",
+          "UNPAID",
+          "PARTIALLY_PAID"
+        ],
+        "fulfillment_status": [
+          "FULFILLED",
+          "UNFULFILLED",
+          "PARTIALLY_FULFILLED"
+        ]
+      },
+      "quirks": [
+        "There is no address, agents or group include here. The assigned photographer is appointments.users.",
+        "Line items come back without any product identity. See orderItems.get."
+      ],
+      "evidence": {
+        "file": "2026-08-29-orders.json",
+        "date": "2026-08-29"
+      }
+    },
+    "orders.get": {
+      "path": "/orders/{orderId}",
+      "method": "GET",
+      "availability": {
+        "state": "available"
+      },
+      "pathParams": {
+        "orderId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "includes": [
+        "items",
+        "tags",
+        "customer",
+        "customerGroup",
+        "listing",
+        "appointments",
+        "appointments.users",
+        "unconfirmed_appointments",
+        "order_form",
+        "discounts",
+        "discounts.coupon",
+        "payments",
+        "taxes"
+      ],
+      "quirks": [
+        "include=items.product is rejected. Product identity is only on the order item detail route."
+      ],
+      "evidence": {
+        "file": "2026-08-29-orders.json",
+        "date": "2026-08-29"
+      }
+    },
+    "orders.paymentInfo.get": {
+      "path": "/orders/{orderId}/payment-info",
+      "method": "GET",
+      "summary": "Amount, upfront percentage, currency and tipping configuration.",
+      "availability": {
+        "state": "available"
+      },
+      "pathParams": {
+        "orderId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "evidence": {
+        "file": "2026-08-29-orders.json",
+        "date": "2026-08-29"
+      }
+    },
+    "orderItems.get": {
+      "path": "/order-items/{orderItemId}",
+      "method": "GET",
+      "summary": "A single line item, and the only route that exposes the catalogue product behind it.",
+      "availability": {
+        "state": "available"
+      },
+      "pathParams": {
+        "orderItemId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "includes": [
+        "product",
+        "product_variant",
+        "order",
+        "order.company",
+        "appointment",
+        "taxes",
+        "discount_amounts",
+        "discount_amounts.discount",
+        "discount_amounts.discount.coupon",
+        "tasks",
+        "tasks.company_team_member",
+        "tasks.company_team_member.user"
+      ],
+      "quirks": [
+        "product_variant.duration is the configured shoot length for that line, which is what appointment length should be derived from.",
+        "This is also the only reliable way to reach the tasks attached to an order."
+      ],
+      "evidence": {
+        "file": "2026-08-29-orders.json",
+        "date": "2026-08-29",
+        "measurement": "product.id present, product_variant.duration 30"
+      }
+    },
+    "orders.deliver": {
+      "path": "/orders/{orderId}/deliver",
+      "method": "POST",
+      "summary": "Publishes the listing and emails the agent.",
+      "availability": {
+        "state": "unverified",
+        "note": "Described from production code in the Envesko estate. Never exercised by this repository, because exercising it would publish somebody's listing."
+      },
+      "mutates": true,
+      "confirmation": {
+        "kind": "echoIdentifier",
+        "field": "number",
+        "warns": "Publishes the Aryeo listing and emails the agent. They see it within seconds and it cannot be recalled."
+      },
+      "pathParams": {
+        "orderId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "evidence": {
+        "file": "2026-08-29-writes.json",
+        "date": "2026-08-29",
+        "source": "production"
+      }
+    },
+    "orders.create": {
+      "path": "/orders",
+      "method": "POST",
+      "summary": "Creates an order upstream.",
+      "availability": {
+        "state": "unverified",
+        "note": "Described from production code. Body fields are not yet enumerated here, because guessing them is how you create malformed orders on somebody's account."
+      },
+      "mutates": true,
+      "confirmation": {
+        "kind": "echoIdentifier",
+        "field": "number",
+        "warns": "Creates a real order upstream."
+      },
+      "evidence": {
+        "file": "2026-08-29-writes.json",
+        "date": "2026-08-29",
+        "source": "production"
+      }
+    },
+    "listings.list": {
+      "path": "/listings",
+      "method": "GET",
+      "summary": "The property and everything shot for it.",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "perPageMax": 100,
+      "filters": {
+        "search": {
+          "wire": "filter[search]",
+          "state": "honoured",
+          "type": "string",
+          "note": "Matches address and MLS number."
+        },
+        "status": {
+          "wire": "filter[status]",
+          "state": "honoured",
+          "type": "string",
+          "enum": [
+            "draft",
+            "coming_soon",
+            "for_lease",
+            "for_sale",
+            "pending_sale",
+            "pending_lease",
+            "for_rent",
+            "sold",
+            "leased",
+            "off_market"
+          ],
+          "evidence": {
+            "file": "2026-08-29-listings.json",
+            "date": "2026-08-29",
+            "measurement": "for_sale 37, sold 3, off_market 0, of 5112"
+          }
+        },
+        "deliveryStatus": {
+          "wire": "filter[delivery_status]",
+          "state": "honoured",
+          "type": "string",
+          "enum": [
+            "delivered",
+            "undelivered"
+          ],
+          "evidence": {
+            "file": "2026-08-29-listings.json",
+            "date": "2026-08-29",
+            "measurement": "delivered 4949, undelivered 161, of 5112"
+          }
+        }
+      },
+      "includes": [
+        "customers",
+        "customers.owner",
+        "list_agent",
+        "list_agent.social_profiles",
+        "list_agent.owner",
+        "co_list_agent",
+        "co_list_agent.social_profiles",
+        "co_list_agent.owner",
+        "images",
+        "videos",
+        "floor_plans",
+        "files",
+        "interactive_content",
+        "property_website",
+        "orders",
+        "orders.items",
+        "orders.appointments",
+        "marketing_materials",
+        "marketing_materials.exports",
+        "esoft_order_lines"
+      ],
+      "responseEnums": {
+        "status": [
+          "DRAFT",
+          "COMING_SOON",
+          "FOR_LEASE",
+          "FOR_SALE",
+          "PENDING_SALE",
+          "PENDING_LEASE",
+          "FOR_RENT",
+          "SOLD",
+          "LEASED",
+          "OFF_MARKET"
+        ]
+      },
+      "quirks": [
+        "An unrecognised status value is ignored rather than rejected and returns the full collection, which reads exactly like an unsupported filter. Probe with a real value.",
+        "There is no address, agents, group or downloads include. The agent is list_agent."
+      ],
+      "evidence": {
+        "file": "2026-08-29-listings.json",
+        "date": "2026-08-29"
+      }
+    },
+    "listings.get": {
+      "path": "/listings/{listingId}",
+      "method": "GET",
+      "availability": {
+        "state": "available"
+      },
+      "pathParams": {
+        "listingId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "includes": [
+        "customers",
+        "customers.owner",
+        "list_agent",
+        "co_list_agent",
+        "images",
+        "videos",
+        "floor_plans",
+        "files",
+        "interactive_content",
+        "property_website",
+        "orders",
+        "orders.items",
+        "orders.appointments",
+        "marketing_materials",
+        "esoft_order_lines"
+      ],
+      "quirks": [
+        "Media expansions are large. A delivered listing routinely carries thirty or more images, each with several sizes. Ask for one media type at a time."
+      ],
+      "evidence": {
+        "file": "2026-08-29-listings.json",
+        "date": "2026-08-29",
+        "measurement": "31 images and 2 floor plans on the sampled listing"
+      }
+    },
+    "listings.stats.get": {
+      "path": "/listings/{listingId}/stats",
+      "method": "GET",
+      "summary": "Property website engagement.",
+      "availability": {
+        "state": "available"
+      },
+      "pathParams": {
+        "listingId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "quirks": [
+        "Returns camelCase keys under main_listing_stats, unlike the rest of the API."
+      ],
+      "evidence": {
+        "file": "2026-08-29-listings.json",
+        "date": "2026-08-29"
+      }
+    },
+    "listings.details.get": {
+      "path": "/listings/{listingId}/details/search",
+      "method": "GET",
+      "summary": "Structured property details: bedrooms, bathrooms, square feet, year built, lot size.",
+      "availability": {
+        "state": "available"
+      },
+      "pathParams": {
+        "listingId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "quirks": [
+        "The path says search but it takes no query and returns the same five fields regardless."
+      ],
+      "evidence": {
+        "file": "2026-08-29-listings.json",
+        "date": "2026-08-29"
+      }
+    },
+    "listings.cubicasa.get": {
+      "path": "/listings/{listingId}/cubi-casa",
+      "method": "GET",
+      "summary": "Floor plan scan state: results, suggested match, current sync.",
+      "availability": {
+        "state": "available"
+      },
+      "pathParams": {
+        "listingId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "quirks": [
+        "Read only. Attaching a scan is an Aryeo admin operation; a bearer-authenticated POST is refused."
+      ],
+      "evidence": {
+        "file": "2026-08-29-listings.json",
+        "date": "2026-08-29"
+      }
+    },
+    "appointments.list": {
+      "path": "/appointments",
+      "method": "GET",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "perPageMax": 100,
+      "filters": {
+        "startAtGte": {
+          "wire": "filter[start_at_gte]",
+          "state": "honoured",
+          "type": "datetime",
+          "evidence": {
+            "file": "2026-08-29-appointments.json",
+            "date": "2026-08-29",
+            "measurement": "66 of 5422 over 7 days"
+          }
+        },
+        "startAtLte": {
+          "wire": "filter[start_at_lte]",
+          "state": "honoured",
+          "type": "datetime",
+          "evidence": {
+            "file": "2026-08-29-appointments.json",
+            "date": "2026-08-29",
+            "measurement": "66 of 5422 over 7 days"
+          }
+        },
+        "search": {
+          "wire": "filter[search]",
+          "state": "honoured",
+          "type": "string",
+          "evidence": {
+            "file": "2026-08-29-appointments.json",
+            "date": "2026-08-29",
+            "measurement": "3 of 5422"
+          }
+        },
+        "status": {
+          "state": "ignored",
+          "type": "string",
+          "strategy": "client-side",
+          "note": "filter[status] and filter[appointment_status] both return the full collection.",
+          "evidence": {
+            "file": "2026-08-29-appointments.json",
+            "date": "2026-08-29",
+            "measurement": "5422 of 5422, unchanged"
+          }
+        },
+        "orderId": {
+          "state": "ignored",
+          "type": "uuid",
+          "strategy": "unsupported",
+          "useInstead": "orders.get",
+          "note": "Read the order with include=appointments instead. Exact, one request, no scan."
+        },
+        "tense": {
+          "state": "rejected",
+          "http": 422,
+          "note": "The selected filter.tense is invalid, for every value tried."
+        }
+      },
+      "includes": [
+        "order",
+        "order.address",
+        "order.customer",
+        "order.customerGroup",
+        "order.customerTeamMembership",
+        "order.listing",
+        "order.items",
+        "order.items.appointment",
+        "order.tags",
+        "owner",
+        "users",
+        "items",
+        "company",
+        "companyTeamMembers",
+        "companyTeamMembers.user",
+        "appointment_attendances",
+        "appointment_attendances.company_team_member"
+      ],
+      "responseEnums": {
+        "status": [
+          "SCHEDULED",
+          "UNSCHEDULED",
+          "CANCELED"
+        ]
+      },
+      "quirks": [
+        "The date filters are start_at_gte and start_at_lte. The orders spelling appointment_start_at_gte is accepted here and ignored.",
+        "start_at is stored in UTC. A local calendar day must be converted to instants before filtering or the window lands hours out.",
+        "The assigned photographer is users or companyTeamMembers. There is no customer, listing or address include; those are under order."
+      ],
+      "evidence": {
+        "file": "2026-08-29-appointments.json",
+        "date": "2026-08-29"
+      }
+    },
+    "appointments.get": {
+      "path": "/appointments/{appointmentId}",
+      "method": "GET",
+      "availability": {
+        "state": "available"
+      },
+      "pathParams": {
+        "appointmentId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "quirks": [
+        "Carries can_cancel, can_reschedule and the lock period flags. Read them before attempting either mutation."
+      ],
+      "evidence": {
+        "file": "2026-08-29-appointments.json",
+        "date": "2026-08-29"
+      }
+    },
+    "appointments.availability.get": {
+      "path": "/appointments/{appointmentId}/availability",
+      "method": "GET",
+      "summary": "Whether a given team member can take this appointment at a given length.",
+      "availability": {
+        "state": "available"
+      },
+      "pathParams": {
+        "appointmentId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "params": {
+        "assignee_id": {
+          "type": "uuid",
+          "required": true
+        },
+        "duration": {
+          "type": "integer",
+          "required": true,
+          "units": "minutes"
+        }
+      },
+      "quirks": [
+        "Returns a single flag, has_conflicts."
+      ],
+      "evidence": {
+        "file": "2026-08-29-appointments.json",
+        "date": "2026-08-29"
+      }
+    },
+    "appointments.cancel": {
+      "path": "/appointments/{appointmentId}/cancel",
+      "method": "POST",
+      "availability": {
+        "state": "unverified",
+        "note": "CONFLICT: production code in the Envesko estate uses POST here, while an earlier MCP implementation used PUT. Neither has been confirmed against a live cancellation. Resolve before generating this method."
+      },
+      "mutates": true,
+      "confirmation": {
+        "kind": "echoIdentifier",
+        "field": "number",
+        "warns": "Cancels the appointment in Aryeo. Anybody holding that slot is told it is gone."
+      },
+      "pathParams": {
+        "appointmentId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "body": {
+        "reason": {
+          "type": "string",
+          "max": 500
+        },
+        "notify_customer": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "evidence": {
+        "file": "2026-08-29-writes.json",
+        "date": "2026-08-29",
+        "source": "production"
+      }
+    },
+    "scheduling.availableDates.list": {
+      "path": "/scheduling/available-dates",
+      "method": "GET",
+      "summary": "Which days have availability across a range. Answers a whole window in one request.",
+      "availability": {
+        "state": "available"
+      },
+      "params": {
+        "timezone": {
+          "type": "string",
+          "required": true
+        },
+        "interval": {
+          "type": "integer",
+          "required": true,
+          "units": "minutes"
+        },
+        "duration": {
+          "type": "integer",
+          "units": "minutes"
+        }
+      },
+      "filters": {
+        "startAt": {
+          "wire": "filter[start_at]",
+          "state": "honoured",
+          "type": "datetime"
+        },
+        "endAt": {
+          "wire": "filter[end_at]",
+          "state": "honoured",
+          "type": "datetime"
+        },
+        "timeframe": {
+          "state": "rejected",
+          "http": 422,
+          "note": "Named in the validation messages but every value tried was refused."
+        }
+      },
+      "quirks": [
+        "Prefer this before available-timeslots: it covers a range in one call, while timeslots takes one day per call."
+      ],
+      "evidence": {
+        "file": "2026-08-29-appointments.json",
+        "date": "2026-08-29",
+        "measurement": "6 available dates over a 7 day window"
+      }
+    },
+    "scheduling.availableTimeslots.list": {
+      "path": "/scheduling/available-timeslots",
+      "method": "GET",
+      "summary": "Bookable start times on one day.",
+      "availability": {
+        "state": "available"
+      },
+      "params": {
+        "timezone": {
+          "type": "string",
+          "required": true
+        },
+        "date": {
+          "type": "date",
+          "required": true
+        },
+        "interval": {
+          "type": "integer",
+          "required": true,
+          "units": "minutes"
+        },
+        "duration": {
+          "type": "integer",
+          "required": true,
+          "units": "minutes",
+          "note": "Sizes each returned slot. There is no default; the caller owns this number."
+        }
+      },
+      "quirks": [
+        "One day per request. Passing an order id is refused.",
+        "Aryeo does not derive appointment length from the order. Whoever calls owns the duration, so derive it from the line items."
+      ],
+      "evidence": {
+        "file": "2026-08-29-appointments.json",
+        "date": "2026-08-29"
+      }
+    },
+    "customers.list": {
+      "path": "/customers",
+      "method": "GET",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "filters": {
+        "search": {
+          "wire": "filter[search]",
+          "state": "honoured",
+          "type": "string",
+          "evidence": {
+            "file": "2026-08-29-directory.json",
+            "date": "2026-08-29",
+            "measurement": "115 of 988"
+          }
+        },
+        "email": {
+          "wire": "filter[email]",
+          "state": "honoured",
+          "type": "string"
+        }
+      },
+      "includes": [
+        "users",
+        "team_members",
+        "customer_teams",
+        "customer_team_memberships",
+        "customer_team_memberships.customer_team",
+        "custom_field_entries",
+        "custom_field_entries.custom_field",
+        "social_profiles",
+        "billing_address",
+        "sso_users"
+      ],
+      "quirks": [
+        "There is no orders or listings include here."
+      ],
+      "evidence": {
+        "file": "2026-08-29-directory.json",
+        "date": "2026-08-29"
+      }
+    },
+    "customerUsers.list": {
+      "path": "/customer-users",
+      "method": "GET",
+      "summary": "The individual agents behind customer records, with contact details and account standing.",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "includes": [
+        "active_customer_team_memberships",
+        "active_customer_team_memberships.user",
+        "active_customer_team_memberships.customer_team",
+        "customer_team_memberships",
+        "customer_team_memberships.user"
+      ],
+      "evidence": {
+        "file": "2026-08-29-directory.json",
+        "date": "2026-08-29",
+        "measurement": "988, the same population as customers.list"
+      }
+    },
+    "customerTeams.list": {
+      "path": "/customer-teams",
+      "method": "GET",
+      "summary": "Agency and brokerage groupings above individual customers.",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "filters": {
+        "search": {
+          "wire": "filter[search]",
+          "state": "honoured",
+          "type": "string"
+        }
+      },
+      "includes": [
+        "createdBy",
+        "memberships",
+        "membershipsCount",
+        "pricing_plan",
+        "adminMembershipsCount",
+        "tags"
+      ],
+      "evidence": {
+        "file": "2026-08-29-directory.json",
+        "date": "2026-08-29",
+        "measurement": "956"
+      }
+    },
+    "companyTeamMembers.list": {
+      "path": "/company-team-members",
+      "method": "GET",
+      "summary": "Photographers, editors and staff. These ids are what orders.list filters on.",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "includes": [
+        "company",
+        "company.feature_flags",
+        "restrictedCustomers"
+      ],
+      "quirks": [
+        "There is no company_user include; it is rejected. That data is nested by default."
+      ],
+      "evidence": {
+        "file": "2026-08-29-directory.json",
+        "date": "2026-08-29",
+        "measurement": "7"
+      }
+    },
+    "companyTeamMembers.get": {
+      "path": "/company-team-members/{memberId}",
+      "method": "GET",
+      "availability": {
+        "state": "available"
+      },
+      "pathParams": {
+        "memberId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "includes": [
+        "company",
+        "company.feature_flags",
+        "restrictedCustomers"
+      ],
+      "evidence": {
+        "file": "2026-08-29-directory.json",
+        "date": "2026-08-29"
+      }
+    },
+    "companyTeamMembers.events.list": {
+      "path": "/company-team-members/{memberId}/events",
+      "method": "GET",
+      "availability": {
+        "state": "available"
+      },
+      "pathParams": {
+        "memberId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "params": {
+        "start": {
+          "type": "datetime",
+          "required": true,
+          "note": "Plain dates are accepted as well as full timestamps."
+        },
+        "end": {
+          "type": "datetime",
+          "required": true
+        }
+      },
+      "quirks": [
+        "Calendar events, which is not the same set as shoots. For what somebody is booked on, use orders.list with userIds."
+      ],
+      "evidence": {
+        "file": "2026-08-29-directory.json",
+        "date": "2026-08-29"
+      }
+    },
+    "products.list": {
+      "path": "/products",
+      "method": "GET",
+      "summary": "The service catalogue. Variants carry the configured shoot duration.",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "filters": {
+        "search": {
+          "wire": "filter[search]",
+          "state": "honoured",
+          "type": "string"
+        },
+        "type": {
+          "wire": "filter[type]",
+          "state": "honoured",
+          "type": "string",
+          "enum": [
+            "main",
+            "addon"
+          ],
+          "evidence": {
+            "file": "2026-08-29-catalogue.json",
+            "date": "2026-08-29",
+            "measurement": "8 of 13 for main"
+          }
+        }
+      },
+      "includes": [
+        "categories",
+        "order_form_categories",
+        "order_form_categories.order_form",
+        "providers"
+      ],
+      "quirks": [
+        "There is no single product route. Use search to locate one.",
+        "variants is not an include; it is already in the default response."
+      ],
+      "evidence": {
+        "file": "2026-08-29-catalogue.json",
+        "date": "2026-08-29",
+        "measurement": "13"
+      }
+    },
+    "productCategories.list": {
+      "path": "/product-categories",
+      "method": "GET",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "filters": {
+        "search": {
+          "wire": "filter[search]",
+          "state": "honoured",
+          "type": "string"
+        }
+      },
+      "evidence": {
+        "file": "2026-08-29-catalogue.json",
+        "date": "2026-08-29"
+      }
+    },
+    "coupons.list": {
+      "path": "/coupons",
+      "method": "GET",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "includes": [
+        "promotion_codes",
+        "discountables"
+      ],
+      "evidence": {
+        "file": "2026-08-29-catalogue.json",
+        "date": "2026-08-29",
+        "measurement": "1"
+      }
+    },
+    "orderForms.list": {
+      "path": "/order-forms",
+      "method": "GET",
+      "summary": "Public booking page templates, with their live URLs and settings.",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "includesUnvalidated": true,
+      "quirks": [
+        "Accepts an unknown include with a 200 rather than returning an allowlist, so its expansions cannot be discovered from outside."
+      ],
+      "evidence": {
+        "file": "2026-08-29-catalogue.json",
+        "date": "2026-08-29",
+        "measurement": "3"
+      }
+    },
+    "territories.list": {
+      "path": "/territories",
+      "method": "GET",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "evidence": {
+        "file": "2026-08-29-catalogue.json",
+        "date": "2026-08-29",
+        "measurement": "2"
+      }
+    },
+    "tags.list": {
+      "path": "/tags",
+      "method": "GET",
+      "summary": "Tag definitions. Resolve a name to an id here before tagging an order.",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "filters": {
+        "type": {
+          "wire": "filter[type]",
+          "state": "honoured",
+          "type": "string",
+          "enum": [
+            "order",
+            "product",
+            "customer_team"
+          ],
+          "evidence": {
+            "file": "2026-08-29-catalogue.json",
+            "date": "2026-08-29",
+            "measurement": "order 16, product 3, customer_team 1, of 22"
+          }
+        }
+      },
+      "quirks": [
+        "Absent from the published API documentation, but stable and in daily production use."
+      ],
+      "evidence": {
+        "file": "2026-08-29-catalogue.json",
+        "date": "2026-08-29"
+      }
+    },
+    "orders.tags.add": {
+      "path": "/orders/{orderId}/tags",
+      "method": "POST",
+      "availability": {
+        "state": "unverified",
+        "note": "Described from production code in the Envesko estate."
+      },
+      "mutates": true,
+      "confirmation": {
+        "kind": "echoIdentifier",
+        "field": "number",
+        "warns": "Tagging an order can trigger downstream automation in connected systems."
+      },
+      "pathParams": {
+        "orderId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "body": {
+        "tag_id": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "evidence": {
+        "file": "2026-08-29-writes.json",
+        "date": "2026-08-29",
+        "source": "production"
+      }
+    },
+    "orders.tags.remove": {
+      "path": "/orders/{orderId}/tags/{tagId}",
+      "method": "DELETE",
+      "availability": {
+        "state": "unverified",
+        "note": "Described from production code in the Envesko estate."
+      },
+      "mutates": true,
+      "confirmation": {
+        "kind": "echoIdentifier",
+        "field": "number",
+        "warns": "Removing a tag can equally trigger or suppress downstream automation."
+      },
+      "pathParams": {
+        "orderId": {
+          "type": "uuid",
+          "required": true
+        },
+        "tagId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "evidence": {
+        "file": "2026-08-29-writes.json",
+        "date": "2026-08-29",
+        "source": "production"
+      }
+    },
+    "tasks.list": {
+      "path": "/tasks",
+      "method": "GET",
+      "summary": "Per-item work assignments: editing, delivery prep, package completion.",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "includesUnvalidated": true,
+      "filters": {
+        "search": {
+          "wire": "filter[search]",
+          "state": "honoured",
+          "type": "string",
+          "evidence": {
+            "file": "2026-08-29-tasks.json",
+            "date": "2026-08-29",
+            "measurement": "26 of 8699"
+          }
+        },
+        "orderId": {
+          "state": "ignored",
+          "type": "uuid",
+          "strategy": "unsupported",
+          "useInstead": "orderItems.get",
+          "note": "Accepted with a 200 and returns all 8699. Read tasks off the order line items instead.",
+          "evidence": {
+            "file": "2026-08-29-tasks.json",
+            "date": "2026-08-29",
+            "measurement": "8699 of 8699, unchanged"
+          }
+        },
+        "status": {
+          "state": "ignored",
+          "type": "string",
+          "strategy": "unsupported"
+        },
+        "isComplete": {
+          "state": "ignored",
+          "type": "boolean",
+          "strategy": "unsupported"
+        }
+      },
+      "quirks": [
+        "Almost nothing filters here. Only search narrows; order id, status and completion are all accepted and ignored.",
+        "There is no way to ask for one order's tasks. Use orderItems.get with the tasks include."
+      ],
+      "evidence": {
+        "file": "2026-08-29-tasks.json",
+        "date": "2026-08-29",
+        "measurement": "8699"
+      }
+    },
+    "tasks.get": {
+      "path": "/tasks/{taskId}",
+      "method": "GET",
+      "availability": {
+        "state": "available"
+      },
+      "pathParams": {
+        "taskId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "evidence": {
+        "file": "2026-08-29-tasks.json",
+        "date": "2026-08-29"
+      }
+    },
+    "payroll.items.list": {
+      "path": "/payroll/pay-run-items",
+      "method": "GET",
+      "summary": "Pay run items. Amounts are in minor units.",
+      "availability": {
+        "state": "available"
+      },
+      "paginated": true,
+      "perPageMax": 100,
+      "filters": {
+        "orderIds": {
+          "wire": "filter[order_ids]",
+          "state": "honoured",
+          "type": "array",
+          "arrayForm": "indexed",
+          "evidence": {
+            "file": "2026-08-29-payroll.json",
+            "date": "2026-08-29",
+            "measurement": "1 of 2404 for a known order"
+          }
+        },
+        "companyTeamMemberIds": {
+          "wire": "filter[company_team_member_ids]",
+          "state": "honoured",
+          "type": "array",
+          "arrayForm": "indexed",
+          "evidence": {
+            "file": "2026-08-29-payroll.json",
+            "date": "2026-08-29",
+            "measurement": "2 of 2404"
+          }
+        },
+        "submittedDateGte": {
+          "wire": "filter[submitted_date_gte]",
+          "state": "honoured",
+          "type": "date",
+          "evidence": {
+            "file": "2026-08-29-payroll.json",
+            "date": "2026-08-29",
+            "measurement": "287 of 2404 over one month"
+          }
+        },
+        "submittedDateLte": {
+          "wire": "filter[submitted_date_lte]",
+          "state": "honoured",
+          "type": "date"
+        },
+        "orderId": {
+          "state": "ignored",
+          "type": "uuid",
+          "useInstead": "orderIds",
+          "note": "The singular spelling is accepted and returns everything. Only the plural indexed form works.",
+          "evidence": {
+            "file": "2026-08-29-payroll.json",
+            "date": "2026-08-29",
+            "measurement": "2404 of 2404, unchanged"
+          }
+        },
+        "companyTeamMemberId": {
+          "state": "ignored",
+          "type": "uuid",
+          "useInstead": "companyTeamMemberIds"
+        },
+        "userIds": {
+          "state": "ignored",
+          "type": "array",
+          "strategy": "unsupported",
+          "note": "Use companyTeamMemberIds. This filter is accepted and does nothing."
+        },
+        "createdAtGte": {
+          "state": "ignored",
+          "type": "datetime",
+          "strategy": "unsupported",
+          "useInstead": "submittedDateGte"
+        },
+        "search": {
+          "state": "ignored",
+          "type": "string",
+          "strategy": "unsupported",
+          "note": "Accepted and does nothing. Narrow by order or submitted date instead."
+        },
+        "status": {
+          "state": "rejected",
+          "http": 422,
+          "type": "string",
+          "strategy": "client-side",
+          "note": "Readable on the record but not filterable. Every value tried was refused."
+        }
+      },
+      "sorts": [
+        "created_at",
+        "-created_at"
+      ],
+      "includes": [
+        "company_team_member",
+        "company_team_member.user",
+        "companyTeamMember",
+        "companyTeamMember.user",
+        "created_by_company_team_member",
+        "created_by_company_team_member.user",
+        "createdByCompanyTeamMember",
+        "createdByCompanyTeamMember.user",
+        "order",
+        "order.address",
+        "order.customer",
+        "owner",
+        "pay_run"
+      ],
+      "responseEnums": {
+        "status": [
+          "OUTSTANDING",
+          "SUBMITTED",
+          "DRAFT"
+        ]
+      },
+      "quirks": [
+        "The default record carries no order or team member. Ask for the includes.",
+        "pay_run is an accepted include but came back empty on every account checked."
+      ],
+      "evidence": {
+        "file": "2026-08-29-payroll.json",
+        "date": "2026-08-29",
+        "measurement": "2404"
+      }
+    },
+    "payroll.items.get": {
+      "path": "/payroll/pay-run-items/{payRunItemId}",
+      "method": "GET",
+      "availability": {
+        "state": "unauthorised",
+        "http": 401,
+        "note": "Refused for every id tried, using the same credential whose collection call succeeds.",
+        "alternative": "payroll.items.list"
+      },
+      "pathParams": {
+        "payRunItemId": {
+          "type": "uuid",
+          "required": true
+        }
+      },
+      "evidence": {
+        "file": "2026-08-29-payroll.json",
+        "date": "2026-08-29",
+        "measurement": "401 on every id"
+      }
+    },
+    "payroll.runs.list": {
+      "path": "/payroll/pay-runs",
+      "method": "GET",
+      "availability": {
+        "state": "absent",
+        "http": 404,
+        "note": "No pay run collection exists. /payroll/pay-runs, /pay-runs, /payrolls, /payroll-items and /payroll/runs all return the path-not-found 404.",
+        "alternative": "payroll.items.list"
+      },
+      "evidence": {
+        "file": "2026-08-29-payroll.json",
+        "date": "2026-08-29"
+      }
+    }
+  }
+}

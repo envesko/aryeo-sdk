@@ -1,0 +1,86 @@
+{
+  "probedAt": "2026-08-29",
+  "generation": "v1",
+  "account": {
+    "kind": "enterprise",
+    "note": "Identifiers and customer data removed. Counts are real."
+  },
+  "endpoint": "/listings",
+  "unfilteredTotal": 5112,
+  "filters": [
+    {
+      "param": "filter[status]",
+      "value": "for_sale",
+      "total": 37,
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[status]",
+      "value": "sold",
+      "total": 3,
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[status]",
+      "value": "off_market",
+      "total": 0,
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[status]",
+      "value": "__bogus__",
+      "total": 5112,
+      "verdict": "ignored",
+      "note": "An unrecognised VALUE is ignored exactly like an unrecognised NAME. This is why a junk probe value proves nothing."
+    },
+    {
+      "param": "filter[delivery_status]",
+      "value": "delivered",
+      "total": 4949,
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[delivery_status]",
+      "value": "undelivered",
+      "total": 161,
+      "verdict": "honoured"
+    }
+  ],
+  "includeAllowlist": "customers, customers.owner, list_agent, list_agent.social_profiles, list_agent.owner, co_list_agent, co_list_agent.social_profiles, co_list_agent.owner, images, videos, floor_plans, files, interactive_content, property_website, orders, orders.items, orders.appointments, marketing_materials, marketing_materials.exports, esoft_order_lines",
+  "subResources": [
+    {
+      "path": "/listings/{id}/stats",
+      "http": 200,
+      "shape": "main_listing_stats: totalUsers, totalViews, topReferrer, allReferrers, avgTimeOnPage",
+      "note": "camelCase keys, unlike the rest of the API"
+    },
+    {
+      "path": "/listings/{id}/details/search",
+      "http": 200,
+      "shape": "bedrooms, bathrooms, square_feet, year_built, lot_size_acres",
+      "note": "takes no query despite the path"
+    },
+    {
+      "path": "/listings/{id}/cubi-casa",
+      "http": 200,
+      "shape": "results, suggested, current_sync, show_all"
+    }
+  ],
+  "mediaVolume": {
+    "sampledListing": "delivered",
+    "images": 31,
+    "floorPlans": 2,
+    "videos": 0,
+    "imageKeys": [
+      "caption",
+      "display_in_gallery",
+      "filename",
+      "id",
+      "index",
+      "large_url",
+      "object",
+      "original_url",
+      "thumbnail_url"
+    ]
+  }
+}

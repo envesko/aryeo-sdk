@@ -1,0 +1,99 @@
+{
+  "probedAt": "2026-08-29",
+  "generation": "v1",
+  "account": {
+    "kind": "enterprise",
+    "note": "Identifiers and customer data removed. Counts are real."
+  },
+  "endpoint": "/orders",
+  "unfilteredTotal": 5383,
+  "filters": [
+    {
+      "param": "filter[search]",
+      "value": "<known order number>",
+      "total": 1,
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[appointment_start_at_gte]+[_lte]",
+      "value": "30 day window",
+      "total": 278,
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[created_at_gte]+[_lte]",
+      "value": "30 day window",
+      "total": 310,
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[appointment_status]",
+      "value": "scheduled",
+      "total": 5072,
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[user_ids][0]",
+      "value": "<7 team members, one at a time>",
+      "totals": [
+        0,
+        630,
+        38,
+        0,
+        3025,
+        275,
+        1342
+      ],
+      "verdict": "honoured"
+    },
+    {
+      "param": "filter[listing_id]",
+      "total": 5383,
+      "verdict": "ignored"
+    },
+    {
+      "param": "sort=-appointment_start",
+      "verdict": "honoured",
+      "note": "ascending and descending return different first pages"
+    }
+  ],
+  "pagination": [
+    {
+      "perPageRequested": 100,
+      "returned": 100
+    },
+    {
+      "perPageRequested": 200,
+      "returned": 100
+    },
+    {
+      "perPageRequested": 500,
+      "returned": 100,
+      "note": "server ceiling is 100"
+    }
+  ],
+  "includeAllowlist": "items, itemsCount, itemsExists, tags, tagsCount, tagsExists, customer, customerGroup, listing, appointments, appointments.users, unconfirmed_appointments, order_form, discounts, discounts.coupon, payments, taxes",
+  "orderItemShape": {
+    "keysOnOrderPayload": [
+      "amount",
+      "description",
+      "gross_total_amount",
+      "id",
+      "is_canceled",
+      "is_serviceable",
+      "object",
+      "purchasable_type",
+      "quantity",
+      "sub_title",
+      "subtitle",
+      "title",
+      "unit_price_amount"
+    ],
+    "note": "No product_id and no nested product. include=items.product is rejected.",
+    "detailRoute": {
+      "path": "/order-items/{id}?include=product,product_variant",
+      "productIdPresent": true,
+      "productVariantDuration": 30
+    }
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "probedAt": "2026-08-29",
+  "generation": "v1",
+  "account": {
+    "kind": "enterprise",
+    "note": "Identifiers and customer data removed. Counts are real."
+  },
+  "endpoints": [
+    {
+      "path": "/customers",
+      "total": 988,
+      "filters": [
+        {
+          "param": "filter[search]",
+          "value": "a",
+          "total": 115,
+          "verdict": "honoured"
+        },
+        {
+          "param": "filter[email]",
+          "value": "<address not on the account>",
+          "total": 0,
+          "verdict": "honoured"
+        }
+      ],
+      "includeAllowlist": "users, team_members, customer_teams, customer_team_memberships, customer_team_memberships.customer_team, custom_field_entries, custom_field_entries.custom_field, social_profiles, billing_address, sso_users"
+    },
+    {
+      "path": "/customer-users",
+      "total": 988,
+      "note": "same population as /customers, different projection",
+      "includeAllowlist": "active_customer_team_memberships, active_customer_team_memberships.user, active_customer_team_memberships.customer_team, customer_team_memberships, customer_team_memberships.user"
+    },
+    {
+      "path": "/customer-teams",
+      "total": 956,
+      "includeAllowlist": "createdBy, createdByCount, createdByExists, memberships, membershipsCount, membershipsExists, pricing_plan, adminMembershipsCount, tags, tagsCount, tagsExists"
+    },
+    {
+      "path": "/company-team-members",
+      "total": 7,
+      "recordKeys": [
+        "calendar_color",
+        "company_user",
+        "external_id",
+        "id",
+        "is_service_provider",
+        "object",
+        "permissions",
+        "restrictions"
+      ],
+      "includeAllowlist": "company, companyCount, companyExists, company.feature_flags, restrictedCustomers",
+      "note": "include=company_user is rejected; company_user is nested by default"
+    },
+    {
+      "path": "/company-team-members/{id}/events",
+      "requires": [
+        "start",
+        "end"
+      ],
+      "http": 200,
+      "note": "plain dates accepted as well as full timestamps"
+    }
+  ]
+}
