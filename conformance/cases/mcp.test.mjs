@@ -158,11 +158,49 @@ describe("the server cannot be reached without authorisation", () => {
   });
 
   it("allowlists where a code may be delivered", () => {
-    assert.match(oauth, /ALLOWED_REDIRECT_HOSTS/);
+    assert.match(oauth, /DEFAULT_ALLOWED_REDIRECT_HOSTS/);
     assert.match(oauth, /isAllowedRedirect/);
     // Dynamic registration means anyone can register a client, so the
     // redirect target is what actually protects this.
     assert.match(oauth, /invalid_redirect_uri/);
+  });
+
+  it("lets a deployer add a host without editing the source", async () => {
+    const { allowedRedirectHosts, isAllowedRedirect } = await import(
+      "../../packages/mcp-worker/src/oauth.ts"
+    );
+
+    // Nothing configured: the built-in defaults only.
+    assert.equal(isAllowedRedirect("https://claude.ai/cb", {}), true);
+    assert.equal(isAllowedRedirect("https://example.invalid/cb", {}), false);
+
+    const env = { ALLOWED_REDIRECT_HOSTS: "chatgpt.com, Example.Invalid " };
+    assert.equal(isAllowedRedirect("https://example.invalid/cb", env), true);
+    assert.equal(isAllowedRedirect("https://chatgpt.com/cb", env), true);
+    // The defaults survive being extended.
+    assert.equal(isAllowedRedirect("https://claude.ai/cb", env), true);
+    assert.ok(allowedRedirectHosts(env).has("chatgpt.com"));
+  });
+
+  it("refuses a wildcard, because naming the host is the point", async () => {
+    const { allowedRedirectHosts, isAllowedRedirect } = await import(
+      "../../packages/mcp-worker/src/oauth.ts"
+    );
+    const env = { ALLOWED_REDIRECT_HOSTS: "*" };
+    assert.equal(allowedRedirectHosts(env).has("*"), false);
+    assert.equal(isAllowedRedirect("https://anything.invalid/cb", env), false);
+  });
+
+  it("still requires https except on loopback", async () => {
+    const { isAllowedRedirect } = await import("../../packages/mcp-worker/src/oauth.ts");
+    const env = { ALLOWED_REDIRECT_HOSTS: "chatgpt.com" };
+    assert.equal(isAllowedRedirect("http://chatgpt.com/cb", env), false);
+    assert.equal(isAllowedRedirect("http://localhost:8787/cb", env), true);
+  });
+
+  it("tells the deployer which host was refused and how to allow it", () => {
+    assert.match(oauth, /does not accept authorisation codes at/);
+    assert.match(oauth, /wrangler secret put ALLOWED_REDIRECT_HOSTS/);
   });
 
   it("compares the approval code in constant time", () => {

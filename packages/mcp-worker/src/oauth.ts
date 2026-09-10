@@ -31,8 +31,19 @@ const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
 const AUTH_CODE_TTL_SECONDS = 600;
 const CLIENT_TTL_SECONDS = 60 * 60 * 24 * 365;
 
-/** Where an authorisation code may be delivered. */
-const ALLOWED_REDIRECT_HOSTS = new Set([
+/**
+ * Where an authorisation code may be delivered, by default.
+ *
+ * This is the control that matters most in the whole flow. Dynamic client
+ * registration lets anybody register a client, so the redirect target, not the
+ * client identity, is what decides where a code can be sent.
+ *
+ * Other MCP clients exist and each uses its own callback host, so a deployer
+ * extends this with ALLOWED_REDIRECT_HOSTS rather than editing the source.
+ * Adding a host means trusting it with codes that lead to your Aryeo account,
+ * so add the specific host a client actually uses and nothing wider.
+ */
+const DEFAULT_ALLOWED_REDIRECT_HOSTS = [
   "claude.ai",
   "www.claude.ai",
   "api.claude.ai",
@@ -44,12 +55,24 @@ const ALLOWED_REDIRECT_HOSTS = new Set([
   "localhost",
   "127.0.0.1",
   "[::1]",
-]);
+];
+
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export interface OAuthEnv {
   OAUTH_KV: KVNamespace;
   /** The operator pastes this at /authorize to prove the deployment is theirs. */
   MCP_APPROVAL_CODE: string;
+  /**
+   * Extra callback hosts to accept, comma separated, for MCP clients beyond
+   * the built-in defaults. Hostnames only, no scheme and no path:
+   *
+   *   wrangler secret put ALLOWED_REDIRECT_HOSTS
+   *   chatgpt.com,chat.openai.com
+   *
+   * A wildcard is deliberately not supported. Naming the host is the point.
+   */
+  ALLOWED_REDIRECT_HOSTS?: string;
 }
 
 interface StoredClient {
@@ -100,17 +123,30 @@ export function secretsMatch(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export function isAllowedRedirect(value: string): boolean {
+/** The default hosts plus anything the deployer added. */
+export function allowedRedirectHosts(env: Pick<OAuthEnv, "ALLOWED_REDIRECT_HOSTS">): Set<string> {
+  const extra = (env.ALLOWED_REDIRECT_HOSTS ?? "")
+    .split(",")
+    .map((host) => host.trim().toLowerCase())
+    .filter((host) => host.length > 0 && host !== "*");
+
+  return new Set([...DEFAULT_ALLOWED_REDIRECT_HOSTS, ...extra]);
+}
+
+export function isAllowedRedirect(
+  value: string,
+  env: Pick<OAuthEnv, "ALLOWED_REDIRECT_HOSTS">,
+): boolean {
   let url: URL;
   try {
     url = new URL(value);
   } catch {
     return false;
   }
-  if (!ALLOWED_REDIRECT_HOSTS.has(url.hostname)) return false;
+  if (!allowedRedirectHosts(env).has(url.hostname.toLowerCase())) return false;
   // Loopback may be http because there is no transport to protect on the same
   // machine. Everything else must be https.
-  const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  const loopback = LOOPBACK_HOSTS.has(url.hostname.toLowerCase());
   return url.protocol === "https:" || (loopback && url.protocol === "http:");
 }
 
@@ -221,10 +257,18 @@ export async function handleOAuth(
       return oauthError("invalid_redirect_uri", "At least one redirect_uri is required.");
     }
     for (const uri of redirectUris) {
-      if (!isAllowedRedirect(uri)) {
+      if (!isAllowedRedirect(uri, env)) {
+        let host = uri;
+        try {
+          host = new URL(uri).hostname;
+        } catch {
+          // Keep the raw value: an unparseable URI is worth showing verbatim.
+        }
         return oauthError(
           "invalid_redirect_uri",
-          `${uri} is not an allowed redirect target for this server.`,
+          `This server does not accept authorisation codes at ${host}. ` +
+            `If you trust that client, add the host with: ` +
+            `wrangler secret put ALLOWED_REDIRECT_HOSTS`,
         );
       }
     }
@@ -268,7 +312,7 @@ export async function handleOAuth(
     if (!stored) return oauthError("invalid_client", "Unknown client. Register first.");
     const client = JSON.parse(stored) as StoredClient;
 
-    if (!client.redirectUris.includes(redirectUri) || !isAllowedRedirect(redirectUri)) {
+    if (!client.redirectUris.includes(redirectUri) || !isAllowedRedirect(redirectUri, env)) {
       return oauthError("invalid_redirect_uri", "That redirect_uri was not registered.");
     }
     // Without PKCE an intercepted code is enough to mint a token.

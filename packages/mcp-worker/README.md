@@ -133,6 +133,46 @@ curl https://aryeo-mcp.<your-subdomain>.workers.dev/health
 
 Every tool returns an authorisation error: the Aryeo token is wrong or lacks access. `npx wrangler tail` shows live logs without exposing the token.
 
+## Connecting a client other than Claude
+
+The server only hands an authorisation code to a host it recognises. Claude's domains and loopback are built in; anything else is refused, because dynamic client registration lets anybody register a client and the redirect target is the only thing deciding where a code can land.
+
+To connect a different client, add its callback host:
+
+```bash
+npx wrangler secret put ALLOWED_REDIRECT_HOSTS
+```
+
+Paste a comma separated list of hostnames. No scheme, no path, no wildcard:
+
+```
+chatgpt.com,chat.openai.com
+```
+
+Then redeploy. The defaults stay in place; this only adds to them.
+
+### Finding the host a client actually uses
+
+Do not guess. Attempt the connection and read the host out of the refusal, which names it:
+
+```
+This server does not accept authorisation codes at chatgpt.com.
+If you trust that client, add the host with:
+wrangler secret put ALLOWED_REDIRECT_HOSTS
+```
+
+If the client swallows the error, watch the worker while you retry:
+
+```bash
+npx wrangler tail
+```
+
+The registration attempt appears there with the exact `redirect_uris` the client sent.
+
+### What you are agreeing to
+
+A host on this list can receive authorisation codes for your Aryeo account. Add the specific host a client uses, never a wildcard, and remove it when you stop using that client. `*` is ignored on purpose.
+
 ## What the approval code is for
 
 This server has exactly one user, so there is no login. Authorisation is you proving the deployment is yours by pasting a code only you have.
