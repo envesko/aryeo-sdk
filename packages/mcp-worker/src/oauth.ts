@@ -50,6 +50,9 @@ const DEFAULT_ALLOWED_REDIRECT_HOSTS = [
   "claude.com",
   "www.claude.com",
   "api.claude.com",
+  // Observed 2026-09-10 from a real ChatGPT connector registration, not
+  // assumed. Only the host it actually sent is listed.
+  "chatgpt.com",
   // RFC 8252 loopback, for desktop and CLI clients. Only reachable from the
   // machine running the client, so a code cannot be intercepted remotely.
   "localhost",
