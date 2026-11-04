@@ -143,8 +143,9 @@ caller-supplied identity headers cannot replace it. The Worker serves only POST
 `/mcp` and does not expose OAuth endpoints. A service-token holder can call the
 direct URL, so protect the token and verify the Access policy covers every route.
 This mode offers the `2025-06-18` handshake and rejects mismatched Origin and
-unsupported MCP protocol version headers. It accepts `notifications/initialized`
-with HTTP 202. The existing OAuth entrypoint retains its previous protocol version.
+unsupported MCP protocol version headers. It acknowledges `notifications/initialized`
+and `notifications/cancelled` with HTTP 202. Cancellation does not interrupt an
+already running request. The existing OAuth entrypoint retains its previous protocol version.
 
 ## Restricted portal bearer mode
 
@@ -210,6 +211,11 @@ The registration attempt appears there with the exact `redirect_uris` the client
 ### What you are agreeing to
 
 A host on this list can receive authorisation codes for your Aryeo account. Add the specific host a client uses, never a wildcard, and remove it when you stop using that client. `*` is ignored on purpose.
+
+Do not allowlist multi-tenant callback hosts such as `dash.cloudflare.com` or
+`oauth-callbacks.cloudflareaccess.com`: a hostname does not identify your
+Cloudflare account or portal. This hostname-only configuration cannot pin a
+Cloudflare callback to your tenant.
 
 ## What the approval code is for
 

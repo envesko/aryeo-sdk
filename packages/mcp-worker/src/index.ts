@@ -117,11 +117,13 @@ async function dispatchMcpRequest(request: Request, env: Env, accessOnly: boolea
   if (!isRpcRequest(body)) return error(null, -32600, "Invalid request.", accessOnly ? 400 : 200);
   if (accessOnly) {
     if (body.id === undefined) {
-      return body.method === "notifications/initialized"
+      return body.method === "notifications/initialized" || body.method === "notifications/cancelled"
         ? new Response(null, { status: 202 })
         : json({ error: "Unsupported notification." }, 400);
     }
-    if (body.method === "notifications/initialized") return error(body.id, -32600, "Invalid request.");
+    if (body.method === "notifications/initialized" || body.method === "notifications/cancelled") {
+      return error(body.id, -32600, "Invalid request.");
+    }
     return dispatchRequest(body, env, "2025-06-18");
   }
   return dispatchRequest(body, env);

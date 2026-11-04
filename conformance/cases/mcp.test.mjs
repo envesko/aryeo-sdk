@@ -191,6 +191,12 @@ describe("the server cannot be reached without authorisation", () => {
     assert.equal(isAllowedRedirect("https://anything.invalid/cb", env), false);
   });
 
+  it("does not trust multi-tenant Cloudflare callback hosts by default", async () => {
+    const { isAllowedRedirect } = await import("../../packages/mcp-worker/src/oauth.ts");
+    assert.equal(isAllowedRedirect("https://dash.cloudflare.com/another-account/one/access-controls/ai-controls/mcp-server/oauth-callback/server", {}), false);
+    assert.equal(isAllowedRedirect("https://oauth-callbacks.cloudflareaccess.com/cdn-cgi/access/outbound-oauth-callback", {}), false);
+  });
+
   it("still requires https except on loopback", async () => {
     const { isAllowedRedirect } = await import("../../packages/mcp-worker/src/oauth.ts");
     const env = { ALLOWED_REDIRECT_HOSTS: "chatgpt.com" };
