@@ -134,7 +134,7 @@ describe("tool names are stable and well formed", () => {
 
 describe("the server cannot be reached without authorisation", () => {
   const worker = readFileSync(
-    new URL("../../packages/mcp-worker/src/index.ts", import.meta.url),
+    new URL("../../packages/mcp-worker/src/oauth-routing.ts", import.meta.url),
     "utf8",
   );
   const oauth = readFileSync(

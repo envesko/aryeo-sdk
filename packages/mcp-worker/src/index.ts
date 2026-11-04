@@ -19,7 +19,8 @@
 import { AryeoCore, AryeoError } from "@envesko/aryeo-client";
 import type { OperationId } from "@envesko/aryeo-client";
 import { TOOLS, TOOLS_BY_NAME } from "./generated/tools.v1.js";
-import { handleOAuth, isAuthorised, type OAuthEnv } from "./oauth.js";
+import type { OAuthEnv } from "./oauth.js";
+import { routeOAuthRequest } from "./oauth-routing.js";
 import { validatePortalRequest, type PortalEnv } from "./portal-security.js";
 export { AuthorizationCodes } from "./authorization-codes.js";
 
@@ -143,36 +144,8 @@ function invalidAuthenticationMode(env: Env): boolean {
 }
 
 async function handleOAuthRequest(request: Request, env: Env, url: URL): Promise<Response> {
-  if (request.method === "GET" && url.pathname === "/health") {
-    return json({ ok: true, server: SERVER.name, tools: TOOLS.length });
-  }
-
-  // Discovery, registration, approval and token exchange.
-  const oauth = await handleOAuth(request, env, url);
-  if (oauth !== null) return oauth;
-
-  if (request.method === "POST" && url.pathname !== "/" && url.pathname !== "/mcp") {
-    return json({ error: "Not found." }, 404);
-  }
-
-  if (request.method !== "POST") {
-    return json({ error: "Send MCP requests as POST." }, 405);
-  }
-
-  if (!(await isAuthorised(request, env))) {
-    // The resource metadata pointer is what lets a client discover where to
-    // authenticate rather than simply failing.
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: {
-        "Content-Type": "application/json",
-        "WWW-Authenticate":
-          `Bearer realm="${SERVER.name}", ` +
-          `resource_metadata="${url.origin}/.well-known/oauth-protected-resource"`,
-      },
-    });
-  }
-
+  const response = await routeOAuthRequest({ request, env, url, server: SERVER.name, tools: TOOLS.length, json });
+  if (response) return response;
   return dispatchMcpRequest(request, env, false);
 }
 
