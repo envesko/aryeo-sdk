@@ -13,7 +13,7 @@ export interface TransportOptions {
   baseUrl: string;
   /** Defaults to globalThis.fetch. Injectable for tests and odd runtimes. */
   fetch?: typeof globalThis.fetch;
-  /** Total attempts for a retryable failure, including the first. Default 4. */
+  /** Total attempts for safe reads, including the first. Writes get one attempt. Default 4. */
   maxAttempts?: number;
   /** First backoff step in milliseconds, doubled each attempt. Default 500. */
   baseDelayMs?: number;
@@ -33,6 +33,7 @@ export interface RequestSpec {
 }
 
 const RETRYABLE_NETWORK = new Set(["ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "EAI_AGAIN"]);
+const RETRYABLE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 export class Transport {
   readonly #apiKey: string;
@@ -58,12 +59,12 @@ export class Transport {
 
   async request<T>(spec: RequestSpec): Promise<T> {
     const url = this.#url(spec);
+    const maxAttempts = RETRYABLE_METHODS.has(spec.method.toUpperCase()) ? this.#maxAttempts : 1;
     let lastError: unknown;
 
-    for (let attempt = 1; attempt <= this.#maxAttempts; attempt++) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const response = await this.#send(url, spec);
-        const text = await response.text();
+        const { response, text } = await this.#send(url, spec);
 
         if (response.ok) {
           return (text.length > 0 ? JSON.parse(text) : {}) as T;
@@ -82,14 +83,14 @@ export class Transport {
           ...(fieldErrors(text) ? { fields: fieldErrors(text)! } : {}),
         });
 
-        if (!error.retryable || attempt === this.#maxAttempts) throw error;
+        if (!error.retryable || attempt === maxAttempts) throw error;
         lastError = error;
         await this.#backoff(attempt, response, spec.path, response.status);
         continue;
       } catch (err) {
         if (err instanceof AryeoDeletedUpstreamError) throw err;
         if (err instanceof AryeoHttpError && !err.retryable) throw err;
-        if (attempt === this.#maxAttempts) throw err;
+        if (attempt === maxAttempts) throw err;
         if (!(err instanceof AryeoHttpError) && !isRetryableNetworkError(err)) throw err;
         lastError = err;
         await this.#backoff(attempt, undefined, spec.path);
@@ -107,9 +108,15 @@ export class Transport {
     return url.toString();
   }
 
-  async #send(url: string, spec: RequestSpec): Promise<Response> {
+  async #send(url: string, spec: RequestSpec): Promise<{ response: Response; text: string }> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.#timeoutMs);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(new DOMException("The request timed out.", "AbortError"));
+      }, this.#timeoutMs);
+    });
     try {
       const headers: Record<string, string> = {
         Authorization: `Bearer ${this.#apiKey}`,
@@ -117,12 +124,16 @@ export class Transport {
       };
       if (spec.body !== undefined) headers["Content-Type"] = "application/json";
 
-      return await this.#fetch(url, {
-        method: spec.method,
-        headers,
-        ...(spec.body !== undefined ? { body: JSON.stringify(spec.body) } : {}),
-        signal: controller.signal,
-      });
+      const request = (async () => {
+        const response = await this.#fetch(url, {
+          method: spec.method,
+          headers,
+          ...(spec.body !== undefined ? { body: JSON.stringify(spec.body) } : {}),
+          signal: controller.signal,
+        });
+        return { response, text: await response.text() };
+      })();
+      return await Promise.race([request, deadline]);
     } finally {
       clearTimeout(timer);
     }

@@ -53,21 +53,9 @@ Rate limit backoff, the hard page size ceiling, and the handful of endpoints tha
 
 ## Run the MCP server
 
-Point Claude at your own Aryeo account in about five minutes. One deployment serves one account, yours, and there is no shared instance to sign up for.
+One deployment serves one Aryeo account. Each deployment needs its own Worker name and Aryeo credential. OAuth deployments also need isolated storage and rate-limit namespaces; the restricted portal credential mode has different requirements. The checked-in configuration is a template and does not expose a public route by default.
 
-Every command runs on your own machine. Wrangler talks to Cloudflare for you; the worker runs on Cloudflare. Names in capitals are literal: you paste the actual token at the prompt, not into the command.
-
-```bash
-git clone https://github.com/envesko/aryeo-sdk && cd aryeo-sdk && npm install && npm run build
-cd packages/mcp-worker
-npx wrangler login                          # opens a browser
-npx wrangler kv namespace create OAUTH_KV   # paste the id into wrangler.jsonc
-npx wrangler secret put ARYEO_API_TOKEN
-npx wrangler secret put MCP_APPROVAL_CODE
-npx wrangler deploy
-```
-
-Full walkthrough, including what the approval code is for and how to revoke access: [packages/mcp-worker/README.md](packages/mcp-worker/README.md).
+Read the [deployment guide](packages/mcp-worker/README.md) before creating resources or setting secrets. It covers the storage bindings, client authorization, write access, and revocation limitations.
 
 ## Coverage
 

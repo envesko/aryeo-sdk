@@ -99,8 +99,9 @@ function describe(id, op) {
 
   if (op.mutates) {
     parts.push(
-      `WRITE. ${op.confirmation?.warns ?? ""} Pass confirm set to the target's ` +
-        `${op.confirmation?.field} to prove you have read the record first.`,
+      `WRITE. ${op.confirmation?.warns ?? ""} Review the target details before acting. ` +
+        `Set confirm to the target's ${op.confirmation?.field} as an acknowledgement. ` +
+        `The server checks only that it is nonempty; it does not verify the target.`,
     );
     if (op.exercisedHere === false) {
       parts.push("This route is described from production usage and has not been exercised by the SDK authors.");

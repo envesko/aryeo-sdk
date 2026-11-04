@@ -1,6 +1,6 @@
 # Aryeo MCP server
 
-Lets Claude and other agents work an Aryeo account directly, over the Model Context Protocol. Runs on Cloudflare Workers, on the free tier.
+Lets Claude and other agents work an Aryeo account directly, over the Model Context Protocol. Runs on Cloudflare Workers. Check the account's current Workers and storage pricing before deployment.
 
 **You host this yourself.** One deployment serves one Aryeo account: yours. Nobody operates a shared instance, and there is no account to sign up for. The whole thing is about a hundred lines on top of `@envesko/aryeo-client`, because every tool is generated from the same description of the API the clients are.
 
@@ -10,7 +10,7 @@ Lets Claude and other agents work an Aryeo account directly, over the Model Cont
 
 **Every command below runs on your own machine, in a terminal.** Nothing is typed into the Cloudflare dashboard. `wrangler` is a command line tool that talks to Cloudflare's API for you; the worker itself then runs on Cloudflare's network, not on your machine.
 
-You need [Node 20 or newer](https://nodejs.org), a free Cloudflare account, and an Aryeo API token. About five minutes.
+You need [Node 20 or newer](https://nodejs.org), a Cloudflare account with Workers, KV, Durable Objects and rate limiting available, and an Aryeo API token.
 
 **Reading the commands:** anything in `<angle brackets>` is yours to replace. Everything else, including names in capitals like `ARYEO_API_TOKEN`, is typed exactly as written. Secret values are never part of a command; you paste them at a prompt.
 
@@ -32,7 +32,7 @@ The build step matters: the worker imports the TypeScript client from this same 
 npx wrangler login
 ```
 
-**3. Make a KV namespace.** It holds registered clients, short-lived authorisation codes and access token hashes. Nothing in it is readable as a working credential.
+**3. Configure an isolated Worker and KV namespace.** Give this deployment a distinct Worker name and its own KV namespace. The namespace holds registered clients and access token hashes. This template explicitly sets `OAUTH_CODE_STORE=atomic`; its SQLite-backed Durable Object stores authorisation codes and provides atomic redemption. Existing configurations without that setting use legacy KV code storage for compatibility, whose separate read and delete operations cannot guarantee single-use redemption under concurrency.
 
 `OAUTH_KV` here is a literal name, typed as written. It is what the worker calls this store in code.
 
@@ -51,7 +51,11 @@ Check you ended up with exactly one:
 grep -c '"binding": "OAUTH_KV"' wrangler.jsonc   # must print 1
 ```
 
+Choose three rate-limit namespace IDs that are not shared with other Workers in the account. Bindings sharing a namespace ID share counters. Keep the `OAUTH_CODES` binding and its Durable Object migration when `OAUTH_CODE_STORE=atomic`; a missing or failed binding causes authorization to fail closed. Moving an existing deployment from legacy KV to atomic mode needs a separately reviewed cutover because in-flight KV codes will not carry over. The template disables `workers.dev`; enable an intended route only after deciding how clients should reach the Worker.
+
 **4. Set the two secrets.**
+
+Wrangler's `secret put` creates and deploys a Worker version. Check the account and Worker name carefully before running it, and treat secret provisioning as a deployment action.
 
 > **Type the names exactly as written.** `ARYEO_API_TOKEN` and `MCP_APPROVAL_CODE` are literal names, not placeholders. They are the labels Cloudflare files the secrets under, and the worker looks them up by those exact strings. Do not substitute your token into the command.
 >
@@ -88,27 +92,13 @@ ARYEO_API_TOKEN
 MCP_APPROVAL_CODE
 ```
 
-If you see anything else, it was created by mistake. Remove it, and run the correct command again:
-
-```bash
-npx wrangler secret delete <the-wrong-name>
-```
+If you see anything unexpected, inspect the target Worker and review the secret's purpose before changing it. Do not delete an existing secret based only on its name.
 
 ### On Windows, if the paste misbehaves
 
 In `cmd`, pasting a value that carries a trailing newline submits it early and the rest of the paste falls through to the shell, which then tries to run your token as a command and puts it in your shell history. If that happens, clear the history line and set the secret again.
 
-The reliable way on Windows is to pipe from a file, which never touches the prompt or your history:
-
-```bat
-echo|set /p="<your-token>">tok.txt
-npx wrangler secret put ARYEO_API_TOKEN < tok.txt
-del tok.txt
-```
-
-`echo|set /p=` writes with no trailing newline. That detail matters: a stray newline becomes part of the secret, and every Aryeo call then fails with a 401 for no visible reason.
-
-PowerShell handles the interactive prompt more predictably than `cmd`, so it is worth using if you have it.
+Use PowerShell and paste the value into Wrangler's interactive secret prompt. Do not put the value in a command, shell history, or a plaintext temporary file. If the prompt does not accept it reliably, stop and choose a secure secret-provisioning method before continuing.
 
 **5. Deploy.**
 
@@ -132,6 +122,44 @@ curl https://aryeo-mcp.<your-subdomain>.workers.dev/health
 `/health` works but Claude cannot connect: check you gave it the full `https://` URL, and that step 4 actually set both secrets (`npx wrangler secret list`).
 
 Every tool returns an authorisation error: the Aryeo token is wrong or lacks access. `npx wrangler tail` shows live logs without exposing the token.
+
+## Cloudflare Access service-token mode
+
+For a dedicated Worker protected by a Cloudflare Access Service Auth policy,
+`src/access-entry.ts` requires `MCP_AUTH_MODE=access_only`,
+`MCP_REQUIRE_ACCESS_ONLY=true`, and the dedicated application's audience in
+`MCP_ACCESS_AUDIENCE`. The platform Access context must match that audience;
+caller-supplied identity headers cannot replace it. The Worker serves only POST
+`/mcp` and does not expose OAuth endpoints. A service-token holder can call the
+direct URL, so protect the token and verify the Access policy covers every route.
+This mode offers the `2025-06-18` handshake and rejects mismatched Origin and
+unsupported MCP protocol version headers. It accepts `notifications/initialized`
+with HTTP 202. The existing OAuth entrypoint retains its previous protocol version.
+
+## Restricted portal bearer mode
+
+The default Worker uses OAuth. For a dedicated Cloudflare MCP Portal deployment,
+`src/portal-entry.ts` provides a separate entrypoint that refuses to fall back to
+OAuth if its required configuration is missing. Set `MCP_AUTH_MODE` to
+`portal_bearer`, `MCP_REQUIRE_PORTAL_BEARER` to `true`, and
+`MCP_ACCESS_AUDIENCE` to the dedicated Worker Access application's audience.
+Protect all Worker routes with an Access Service Auth policy, and keep preview
+and unprotected alternate URLs disabled. The Worker requires the platform Access
+context with that audience; caller-supplied identity headers are not sufficient.
+
+Set `MCP_PORTAL_TOKEN` as a separate secret from `ARYEO_API_TOKEN`. Generate it
+from 32 cryptographically random bytes encoded as unpadded base64url. The Worker
+checks the 43-character encoding shape, but that check cannot prove randomness.
+In the portal's bearer authentication configuration, provide the Access service
+token headers and the separate Worker bearer. This mode serves only POST `/mcp`,
+does not expose upstream OAuth endpoints, and needs no OAuth KV, authorization
+code Durable Object, or OAuth rate-limit bindings.
+
+The portal uses a shared upstream credential; per-user authorization occurs at
+the portal, not through separate upstream OAuth grants. Anyone holding both the
+Access service token and Worker bearer can access the direct Worker URL. Verify
+the actual Access policy, portal header forwarding, route coverage, rotation and
+direct-access rejection with synthetic credentials before relying on this mode.
 
 ## Connecting a client other than Claude
 
@@ -179,16 +207,11 @@ This server has exactly one user, so there is no login. Authorisation is you pro
 
 It is not a password you share. Anybody who has it can connect a client that then acts with full access to your Aryeo account: orders, listings, customers, media, and the writes below.
 
-The token a client receives lasts 30 days and is stored only as a hash, so a dump of your KV namespace yields nothing usable. To cut off every connected client, rotate the approval code and delete the tokens:
-
-```bash
-npx wrangler secret put MCP_APPROVAL_CODE
-npx wrangler kv key list --binding OAUTH_KV | grep '"token:' 
-```
+The token a client receives lasts 30 days and is stored as a hash. Rotating the approval code prevents new authorizations with the old code, but does not revoke existing bearer tokens. Revocation requires a separately reviewed operation against the correct Worker's token records; listing keys alone does not revoke them. KV changes may take time to propagate between Cloudflare locations.
 
 ## Writes
 
-Eight tools change data in Aryeo. Each one requires the agent to echo an identifier from the record it is about to change, which means it has to have read the record first and cannot fire one off a guess.
+Eight tools change data in Aryeo. They require a nonempty confirmation value, but the server does not compare it to the target or verify that the record was read. Treat this as an acknowledgment, not a target-verification safeguard, and review consequential actions before calling them.
 
 ```
 appointments_cancel   appointments_create   appointments_reschedule
@@ -204,7 +227,7 @@ If you would rather run read-only, do not grant those: deploy with an Aryeo toke
 
 The Aryeo token exists only as a Worker secret and never appears in a response, an error message or a log line.
 
-Authorisation uses PKCE with S256, so an intercepted code cannot be exchanged without the verifier. Redirect targets are allowlisted to Claude's domains and loopback, which matters because dynamic client registration means anyone can register a client. Authorisation codes are single use and expire in ten minutes.
+Authorisation uses PKCE with S256, so an intercepted code cannot be exchanged without the verifier. Redirect targets are allowlisted to Claude's domains and loopback, which matters because dynamic client registration means anyone can register a client. Authorisation codes expire in ten minutes. Atomic mode guarantees single-use redemption; legacy KV mode cannot guarantee it under concurrent exchange.
 
 The worker refuses every MCP request without a valid token, and there is no configuration in which it serves unauthenticated traffic.
 

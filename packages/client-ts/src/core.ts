@@ -111,7 +111,6 @@ export class AryeoCore {
         path,
         query,
         ...(body ? { body } : {}),
-        ...(used.size > 0 && descriptor.method === "GET" ? { expectExisting: true } : {}),
       });
       return {
         data: response,
@@ -119,6 +118,11 @@ export class AryeoCore {
       };
     }
 
+    if (operationId === "orders.list" && clientSide.some((filter) => filter.name === "listingId")) {
+      const includes = new Set((query["include"] ?? "").split(",").filter(Boolean));
+      includes.add("listing");
+      query["include"] = [...includes].join(",");
+    }
     return this.#scan<T>(operationId, descriptor, path, query, clientSide);
   }
 

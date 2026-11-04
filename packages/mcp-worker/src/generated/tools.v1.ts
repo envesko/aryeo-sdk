@@ -43,7 +43,7 @@ export const TOOLS: ToolDefinition[] = [
   {
     "name": "appointments_cancel",
     "operationId": "appointments.cancel",
-    "description": "Cancels an appointment somebody is expecting. Read can_cancel and the lock period flags from appointments.get first. WRITE. Cancels the appointment in Aryeo. Anybody holding that slot is told it is gone. Pass confirm set to the target's number to prove you have read the record first. This route is described from production usage and has not been exercised by the SDK authors.",
+    "description": "Cancels an appointment somebody is expecting. Read can_cancel and the lock period flags from appointments.get first. WRITE. Cancels the appointment in Aryeo. Anybody holding that slot is told it is gone. Review the target details before acting. Set confirm to the target's number as an acknowledgement. The server checks only that it is nonempty; it does not verify the target. This route is described from production usage and has not been exercised by the SDK authors.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -72,7 +72,7 @@ export const TOOLS: ToolDefinition[] = [
   {
     "name": "appointments_create",
     "operationId": "appointments.create",
-    "description": "Books an appointment against an existing order. Aryeo stores whatever span it is given and does not derive length from the order's products, so the caller owns the number. The order must already carry an address or the booking is refused. WRITE. Creates a real appointment. The customer is notified unless notify_customer is false. Pass confirm set to the target's number to prove you have read the record first. This route is described from production usage and has not been exercised by the SDK authors.",
+    "description": "Books an appointment against an existing order. Aryeo stores whatever span it is given and does not derive length from the order's products, so the caller owns the number. The order must already carry an address or the booking is refused. WRITE. Creates a real appointment. The customer is notified unless notify_customer is false. Review the target details before acting. Set confirm to the target's number as an acknowledgement. The server checks only that it is nonempty; it does not verify the target. This route is described from production usage and has not been exercised by the SDK authors.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -184,7 +184,7 @@ export const TOOLS: ToolDefinition[] = [
   {
     "name": "appointments_reschedule",
     "operationId": "appointments.reschedule",
-    "description": "Moves an appointment to a new start, keeping its length. Takes no duration. To change how long a shoot runs, cancel and rebook. Read can_reschedule and the lock period flags from appointments.get first. WRITE. Moves a real appointment. Anybody holding the old slot is told it has changed. Pass confirm set to the target's number to prove you have read the record first. This route is described from production usage and has not been exercised by the SDK authors.",
+    "description": "Moves an appointment to a new start, keeping its length. Takes no duration. To change how long a shoot runs, cancel and rebook. Read can_reschedule and the lock period flags from appointments.get first. WRITE. Moves a real appointment. Anybody holding the old slot is told it has changed. Review the target details before acting. Set confirm to the target's number as an acknowledgement. The server checks only that it is nonempty; it does not verify the target. This route is described from production usage and has not been exercised by the SDK authors.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -414,7 +414,7 @@ export const TOOLS: ToolDefinition[] = [
   {
     "name": "customers_create",
     "operationId": "customers.create",
-    "description": "Adds a customer, which in Aryeo means an agent or agency rather than an end consumer. A name field sent here is overwritten; Aryeo sets it from the first and last name. internal_notes is accepted and dropped. WRITE. Aryeo emails the owner an invitation immediately and also creates a customer team. The record stays inactive until they accept. Pass confirm set to the target's email to prove you have read the record first. This route is described from production usage and has not been exercised by the SDK authors.",
+    "description": "Adds a customer, which in Aryeo means an agent or agency rather than an end consumer. A name field sent here is overwritten; Aryeo sets it from the first and last name. internal_notes is accepted and dropped. WRITE. Aryeo emails the owner an invitation immediately and also creates a customer team. The record stays inactive until they accept. Review the target details before acting. Set confirm to the target's email as an acknowledgement. The server checks only that it is nonempty; it does not verify the target. This route is described from production usage and has not been exercised by the SDK authors.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -745,7 +745,7 @@ export const TOOLS: ToolDefinition[] = [
   {
     "name": "orders_deliver",
     "operationId": "orders.deliver",
-    "description": "Publishes the listing and emails the agent. WRITE. Publishes the Aryeo listing and emails the agent. They see it within seconds and it cannot be recalled. Pass confirm set to the target's number to prove you have read the record first. This route is described from production usage and has not been exercised by the SDK authors.",
+    "description": "Publishes the listing and emails the agent. WRITE. Publishes the Aryeo listing and emails the agent. They see it within seconds and it cannot be recalled. Review the target details before acting. Set confirm to the target's number as an acknowledgement. The server checks only that it is nonempty; it does not verify the target. This route is described from production usage and has not been exercised by the SDK authors.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -941,7 +941,7 @@ export const TOOLS: ToolDefinition[] = [
   {
     "name": "orders_tags_add",
     "operationId": "orders.tags.add",
-    "description": "Attaches a tag to an order. Tags drive automation in connected systems, so adding one can have effects beyond Aryeo. WRITE. Tagging an order can trigger downstream automation in connected systems. Pass confirm set to the target's number to prove you have read the record first. This route is described from production usage and has not been exercised by the SDK authors.",
+    "description": "Attaches a tag to an order. Tags drive automation in connected systems, so adding one can have effects beyond Aryeo. WRITE. Tagging an order can trigger downstream automation in connected systems. Review the target details before acting. Set confirm to the target's number as an acknowledgement. The server checks only that it is nonempty; it does not verify the target. This route is described from production usage and has not been exercised by the SDK authors.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -969,7 +969,7 @@ export const TOOLS: ToolDefinition[] = [
   {
     "name": "orders_tags_remove",
     "operationId": "orders.tags.remove",
-    "description": "Detaches a tag from an order. Removing a tag can equally trigger or suppress downstream automation. WRITE. Removing a tag can equally trigger or suppress downstream automation. Pass confirm set to the target's number to prove you have read the record first. This route is described from production usage and has not been exercised by the SDK authors.",
+    "description": "Detaches a tag from an order. Removing a tag can equally trigger or suppress downstream automation. WRITE. Removing a tag can equally trigger or suppress downstream automation. Review the target details before acting. Set confirm to the target's number as an acknowledgement. The server checks only that it is nonempty; it does not verify the target. This route is described from production usage and has not been exercised by the SDK authors.",
     "inputSchema": {
       "type": "object",
       "properties": {
@@ -997,7 +997,7 @@ export const TOOLS: ToolDefinition[] = [
   {
     "name": "payroll_items_create",
     "operationId": "payroll.items.create",
-    "description": "Records a pay run item against an order and a team member. Aryeo renders neither newlines nor HTML in the title, so multi-line narrative has to use a visual separator. WRITE. Records money owed against a real order and a real person. Pass confirm set to the target's number to prove you have read the record first. This route is described from production usage and has not been exercised by the SDK authors.",
+    "description": "Records a pay run item against an order and a team member. Aryeo renders neither newlines nor HTML in the title, so multi-line narrative has to use a visual separator. WRITE. Records money owed against a real order and a real person. Review the target details before acting. Set confirm to the target's number as an acknowledgement. The server checks only that it is nonempty; it does not verify the target. This route is described from production usage and has not been exercised by the SDK authors.",
     "inputSchema": {
       "type": "object",
       "properties": {

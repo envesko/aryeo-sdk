@@ -18,7 +18,7 @@ const source = readFileSync(
   "utf8",
 );
 const TOOLS = JSON.parse(
-  /export const TOOLS: ToolDefinition\[\] = (\[[\s\S]*?\]);\n\nexport const/.exec(source)[1],
+  /export const TOOLS: ToolDefinition\[\] = (\[[\s\S]*?\]);\r?\n\r?\nexport const/.exec(source)[1],
 );
 
 const byName = new Map(TOOLS.map((t) => [t.name, t]));
@@ -212,10 +212,10 @@ describe("the server cannot be reached without authorisation", () => {
     assert.match(oauth, /token:\$\{await sha256Hex\(presented\)\}/);
   });
 
-  it("spends an authorisation code before validating it", () => {
-    const consume = oauth.indexOf("OAUTH_KV.delete(`code:${code}`)");
+  it("routes code consumption to the authorization store before validating it", () => {
+    const consume = oauth.indexOf('codeStoreRequest(env, code, "consume")');
     const verify = oauth.indexOf("The code verifier does not match");
-    assert.ok(consume > 0 && verify > consume, "the code must be single use");
+    assert.ok(consume > 0 && verify > consume, "consumption must precede validation");
   });
 
   it("never renders an approval code back into the page", () => {
