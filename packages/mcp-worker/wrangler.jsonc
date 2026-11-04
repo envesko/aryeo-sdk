@@ -5,7 +5,7 @@
 	"compatibility_date": "2026-08-01",
 	"workers_dev": false,
 	"preview_urls": false,
-	"vars": { "OAUTH_CODE_STORE": "atomic" },
+	"vars": { "OAUTH_CODE_STORE": "atomic", "OAUTH_RATE_LIMIT_MODE": "required" },
 	// Create your own and paste the id here:
 	//   wrangler kv namespace create OAUTH_KV
 	//

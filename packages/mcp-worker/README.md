@@ -51,7 +51,17 @@ Check you ended up with exactly one:
 grep -c '"binding": "OAUTH_KV"' wrangler.jsonc   # must print 1
 ```
 
-Choose three rate-limit namespace IDs that are not shared with other Workers in the account. Bindings sharing a namespace ID share counters. Keep the `OAUTH_CODES` binding and its Durable Object migration when `OAUTH_CODE_STORE=atomic`; a missing or failed binding causes authorization to fail closed. Moving an existing deployment from legacy KV to atomic mode needs a separately reviewed cutover because in-flight KV codes will not carry over. The template disables `workers.dev`; enable an intended route only after deciding how clients should reach the Worker.
+Choose three rate-limit namespace IDs that are not shared with other Workers in the account. Bindings sharing a namespace ID share counters. Keep the `OAUTH_CODES` binding and its Durable Object migration when `OAUTH_CODE_STORE=atomic`; a missing or failed binding causes authorization to fail closed. Moving an existing deployment from legacy KV to atomic mode needs a separately reviewed cutover because in-flight KV codes will not carry over.
+
+The template disables `workers.dev` and defines no route. To use a `workers.dev` URL for the examples below, explicitly set `"workers_dev": true` in `wrangler.jsonc` before deploying. Alternatively configure a Cloudflare route or Custom Domain and use that hostname in place of `<worker-hostname>` below. Keep preview URLs disabled unless you have secured them separately. Do not open a route until the Worker has the intended authentication configuration.
+
+### Upgrading an existing OAuth deployment
+
+OAuth registration, approval and token exchange support three rate-limit bindings: `RATE_LIMIT_REGISTER`, `RATE_LIMIT_APPROVE` and `RATE_LIMIT_TOKEN`. Existing deployments created from older versions may have none. With `OAUTH_RATE_LIMIT_MODE` omitted or set to `legacy`, a deployment with no limiter bindings retains its previous unthrottled OAuth behavior. Add all three bindings with distinct namespace IDs and set `OAUTH_RATE_LIMIT_MODE=required` to enable fail-closed rate limiting. Do not replace the existing KV namespace or secrets.
+
+If any limiter binding is configured, all three must be present: partial configuration returns HTTP 503 for each protected OAuth route. In `required` mode, missing bindings also return 503. A limiter failure or unknown mode fails closed. Existing access tokens can continue to authenticate MCP requests while OAuth routes are unavailable.
+
+Keep the existing `OAUTH_CODE_STORE` setting during this upgrade. Adding rate limiting does not require changing from legacy KV to atomic Durable Object storage; that migration needs its own cutover plan.
 
 **4. Set the two secrets.**
 
@@ -106,10 +116,10 @@ Use PowerShell and paste the value into Wrangler's interactive secret prompt. Do
 npx wrangler deploy
 ```
 
-Wrangler prints the URL it deployed to. Check it came up:
+Check the configured `workers.dev` URL, route or Custom Domain. If no route was enabled in step 3, there is no public URL to test:
 
 ```bash
-curl https://aryeo-mcp.<your-subdomain>.workers.dev/health
+curl https://<worker-hostname>/health
 # {"ok":true,"server":"aryeo","tools":39}
 ```
 

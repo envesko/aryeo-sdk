@@ -82,9 +82,11 @@ export interface OAuthEnv {
    * A wildcard is deliberately not supported. Naming the host is the point.
    */
   ALLOWED_REDIRECT_HOSTS?: string;
-  RATE_LIMIT_APPROVE: OAuthRateLimiter;
-  RATE_LIMIT_REGISTER: OAuthRateLimiter;
-  RATE_LIMIT_TOKEN: OAuthRateLimiter;
+  /** Legacy allows old deployments with no limiter bindings; required fails closed. */
+  OAUTH_RATE_LIMIT_MODE?: string;
+  RATE_LIMIT_APPROVE?: OAuthRateLimiter;
+  RATE_LIMIT_REGISTER?: OAuthRateLimiter;
+  RATE_LIMIT_TOKEN?: OAuthRateLimiter;
 }
 
 export interface OAuthRateLimiter {
@@ -408,17 +410,36 @@ function oauthRoute({ request, url }: OAuthContext): OAuthRoute | undefined {
   return { handler: authorize };
 }
 
+function rateLimitUnavailable(): Response {
+  return oauthError("temporarily_unavailable", "OAuth rate limiting is unavailable.", 503);
+}
+
+function invalidRateLimitMode(mode: string | undefined): boolean {
+  return mode !== undefined && mode !== "legacy" && mode !== "required";
+}
+
+function rateLimitConfiguration(env: OAuthEnv): "legacy" | "configured" | "invalid" {
+  const limiters = [env.RATE_LIMIT_APPROVE, env.RATE_LIMIT_REGISTER, env.RATE_LIMIT_TOKEN];
+  const present = limiters.filter((limiter) => limiter !== undefined && limiter !== null).length;
+  if (present === 0) return env.OAUTH_RATE_LIMIT_MODE === "required" ? "invalid" : "legacy";
+  return present === limiters.length ? "configured" : "invalid";
+}
+
 async function throttle(context: OAuthContext, binding?: LimiterBinding): Promise<Response | null> {
+  if (invalidRateLimitMode(context.env.OAUTH_RATE_LIMIT_MODE)) return rateLimitUnavailable();
   if (!binding) return null;
+  const configuration = rateLimitConfiguration(context.env);
+  if (configuration === "legacy") return null;
+  if (configuration === "invalid") return rateLimitUnavailable();
   const limiter = context.env[binding];
-  if (!limiter) return oauthError("temporarily_unavailable", "OAuth rate limiting is unavailable.", 503);
+  if (!limiter) return rateLimitUnavailable();
   try {
     const result = await limiter.limit({ key: context.request.headers.get("CF-Connecting-IP") ?? "unknown" });
     if (result.success) return null;
     return json({ error: "slow_down", error_description: "Too many attempts. Try again later." },
       429, { "Retry-After": "60" });
   } catch {
-    return oauthError("temporarily_unavailable", "OAuth rate limiting is unavailable.", 503);
+    return rateLimitUnavailable();
   }
 }
 

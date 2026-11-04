@@ -20,25 +20,10 @@ import { AryeoCore, AryeoError } from "@envesko/aryeo-client";
 import type { OperationId } from "@envesko/aryeo-client";
 import { TOOLS, TOOLS_BY_NAME } from "./generated/tools.v1.js";
 import { handleOAuth, isAuthorised, type OAuthEnv } from "./oauth.js";
+import { validatePortalRequest, type PortalEnv } from "./portal-security.js";
 export { AuthorizationCodes } from "./authorization-codes.js";
 
-export interface Env extends OAuthEnv {
-  /**
-   * The Aryeo API token this deployment acts with. One deployment, one
-   * account: this server is meant to be self-hosted by whoever owns the key.
-   */
-  ARYEO_API_TOKEN: string;
-  /** Omitted or oauth keeps the existing OAuth flow; portal_bearer is opt-in. */
-  MCP_AUTH_MODE?: string;
-  /** A separate, high-entropy secret used only for portal-to-Worker access. */
-  MCP_PORTAL_TOKEN?: string;
-  /** Pin a dedicated deployment to portal mode even if its mode variable is removed. */
-  MCP_REQUIRE_PORTAL_BEARER?: string;
-  /** Pin a deployment to Cloudflare Access service-token authentication. */
-  MCP_REQUIRE_ACCESS_ONLY?: string;
-  /** Access application audience that must authenticate the Worker request. */
-  MCP_ACCESS_AUDIENCE?: string;
-}
+export interface Env extends OAuthEnv, PortalEnv {}
 
 const PROTOCOL_VERSION = "2024-11-05";
 const SERVER = { name: "aryeo", version: "0.1.0" };
@@ -121,50 +106,7 @@ async function dispatchTool(body: JsonRpcRequest, env: Env): Promise<Response> {
   return result(body.id, await callTool(env, name, args));
 }
 
-async function equalSecrets(left: string, right: string): Promise<boolean> {
-  const encoder = new TextEncoder();
-  const [leftHash, rightHash] = await Promise.all([
-    crypto.subtle.digest("SHA-256", encoder.encode(left)),
-    crypto.subtle.digest("SHA-256", encoder.encode(right)),
-  ]);
-  // Cloudflare's non-standard extension is omitted by some DOM type libraries.
-  const subtle = crypto.subtle as SubtleCrypto & { timingSafeEqual(a: ArrayBuffer, b: ArrayBuffer): boolean };
-  return subtle.timingSafeEqual(leftHash, rightHash);
-}
-
-async function handlePortalRequest(request: Request, env: Env, url: URL, ctx?: ExecutionContext): Promise<Response> {
-  const secret = env.MCP_PORTAL_TOKEN;
-  const audience = env.MCP_ACCESS_AUDIENCE;
-  const accessOnly = env.MCP_AUTH_MODE === "access_only";
-  // A 32-byte random value encoded as unpadded base64url is 43 characters.
-  if (typeof env.ARYEO_API_TOKEN !== "string" || !env.ARYEO_API_TOKEN.trim() ||
-      typeof audience !== "string" || !audience.trim() ||
-      (!accessOnly && (typeof secret !== "string" || !/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(secret) ||
-       await equalSecrets(secret, env.ARYEO_API_TOKEN)))) {
-    return json({ error: "Portal authentication is not configured." }, 503);
-  }
-  if (url.pathname !== "/mcp") return json({ error: "Not found." }, 404);
-  if (request.method !== "POST") return json({ error: "Send MCP requests as POST." }, 405);
-
-  if (accessOnly) {
-    const origin = request.headers.get("Origin");
-    if (origin !== null && origin !== url.origin) return json({ error: "Invalid origin." }, 403);
-    const version = request.headers.get("MCP-Protocol-Version");
-    if (version !== null && version !== "2025-06-18") return json({ error: "Unsupported protocol version." }, 400);
-  }
-
-  // This context is supplied by the Workers platform after Access validates a
-  // direct request. A caller-provided identity header is not sufficient.
-  const access = (ctx as (ExecutionContext & { access?: { aud?: string } }) | undefined)?.access;
-  if (!access || access.aud !== audience) return json({ error: "Access required." }, 403);
-
-  const supplied = /^Bearer (.+)$/i.exec(request.headers.get("Authorization") ?? "")?.[1] ?? "";
-  if (!accessOnly && !(await equalSecrets(supplied, secret ?? ""))) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json", "WWW-Authenticate": 'Bearer realm="aryeo"' },
-    });
-  }
+async function dispatchMcpRequest(request: Request, env: Env, accessOnly: boolean): Promise<Response> {
   let body: unknown;
   try {
     body = await request.json();
@@ -184,62 +126,63 @@ async function handlePortalRequest(request: Request, env: Env, url: URL, ctx?: E
   return dispatchRequest(body, env);
 }
 
+async function handlePortalRequest(request: Request, env: Env, url: URL, ctx?: ExecutionContext): Promise<Response> {
+  const denied = await validatePortalRequest(request, env, url, ctx);
+  if (denied) return denied;
+  return dispatchMcpRequest(request, env, env.MCP_AUTH_MODE === "access_only");
+}
+
+function invalidAuthenticationMode(env: Env): boolean {
+  const accessPinFailed = env.MCP_REQUIRE_ACCESS_ONLY !== undefined &&
+    (env.MCP_REQUIRE_ACCESS_ONLY !== "true" || env.MCP_AUTH_MODE !== "access_only");
+  const portalPinFailed = env.MCP_REQUIRE_PORTAL_BEARER !== undefined &&
+    (env.MCP_REQUIRE_PORTAL_BEARER !== "true" || env.MCP_AUTH_MODE !== "portal_bearer");
+  const supportedMode = env.MCP_AUTH_MODE === undefined ||
+    ["oauth", "portal_bearer", "access_only"].includes(env.MCP_AUTH_MODE);
+  return accessPinFailed || portalPinFailed || !supportedMode;
+}
+
+async function handleOAuthRequest(request: Request, env: Env, url: URL): Promise<Response> {
+  if (request.method === "GET" && url.pathname === "/health") {
+    return json({ ok: true, server: SERVER.name, tools: TOOLS.length });
+  }
+
+  // Discovery, registration, approval and token exchange.
+  const oauth = await handleOAuth(request, env, url);
+  if (oauth !== null) return oauth;
+
+  if (request.method === "POST" && url.pathname !== "/" && url.pathname !== "/mcp") {
+    return json({ error: "Not found." }, 404);
+  }
+
+  if (request.method !== "POST") {
+    return json({ error: "Send MCP requests as POST." }, 405);
+  }
+
+  if (!(await isAuthorised(request, env))) {
+    // The resource metadata pointer is what lets a client discover where to
+    // authenticate rather than simply failing.
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: {
+        "Content-Type": "application/json",
+        "WWW-Authenticate":
+          `Bearer realm="${SERVER.name}", ` +
+          `resource_metadata="${url.origin}/.well-known/oauth-protected-resource"`,
+      },
+    });
+  }
+
+  return dispatchMcpRequest(request, env, false);
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
-
-    if (env.MCP_REQUIRE_ACCESS_ONLY !== undefined &&
-        (env.MCP_REQUIRE_ACCESS_ONLY !== "true" || env.MCP_AUTH_MODE !== "access_only")) {
-      return json({ error: "Authentication mode is not configured." }, 503);
-    }
-
-    if (env.MCP_REQUIRE_PORTAL_BEARER !== undefined &&
-        (env.MCP_REQUIRE_PORTAL_BEARER !== "true" || env.MCP_AUTH_MODE !== "portal_bearer")) {
+    if (invalidAuthenticationMode(env)) {
       return json({ error: "Authentication mode is not configured." }, 503);
     }
     if (env.MCP_AUTH_MODE === "portal_bearer" || env.MCP_AUTH_MODE === "access_only") return handlePortalRequest(request, env, url, ctx);
-    if (env.MCP_AUTH_MODE !== undefined && env.MCP_AUTH_MODE !== "oauth") {
-      return json({ error: "Authentication mode is not configured." }, 503);
-    }
-
-    if (request.method === "GET" && url.pathname === "/health") {
-      return json({ ok: true, server: SERVER.name, tools: TOOLS.length });
-    }
-
-    // Discovery, registration, approval and token exchange.
-    const oauth = await handleOAuth(request, env, url);
-    if (oauth !== null) return oauth;
-
-    if (request.method === "POST" && url.pathname !== "/" && url.pathname !== "/mcp") {
-      return json({ error: "Not found." }, 404);
-    }
-
-    if (request.method !== "POST") {
-      return json({ error: "Send MCP requests as POST." }, 405);
-    }
-
-    if (!(await isAuthorised(request, env))) {
-      // The resource metadata pointer is what lets a client discover where to
-      // authenticate rather than simply failing.
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: {
-          "Content-Type": "application/json",
-          "WWW-Authenticate":
-            `Bearer realm="${SERVER.name}", ` +
-            `resource_metadata="${url.origin}/.well-known/oauth-protected-resource"`,
-        },
-      });
-    }
-
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return error(null, -32700, "Invalid JSON.");
-    }
-
-    if (!isRpcRequest(body)) return error(null, -32600, "Invalid request.");
-    return dispatchRequest(body, env);
+    return handleOAuthRequest(request, env, url);
   },
 };

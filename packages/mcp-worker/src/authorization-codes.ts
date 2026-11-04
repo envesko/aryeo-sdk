@@ -7,6 +7,17 @@ interface CodeRecord {
 
 const CODE_TTL_MS = 600_000;
 
+interface CodeRequest {
+  hash: string;
+  clientId?: string;
+  redirectUri?: string;
+  codeChallenge?: string;
+}
+
+function missingCodeDetails(body: CodeRequest): boolean {
+  return !body.clientId || !body.redirectUri || !body.codeChallenge;
+}
+
 // Each object owns one of 256 hash prefixes. Guessed codes cannot create an
 // unbounded number of persistent objects, and the full hash never leaves the
 // Worker's private binding.
@@ -22,36 +33,38 @@ export class AuthorizationCodes {
   }
 
   async fetch(request: Request): Promise<Response> {
-    const body = await request.json() as {
-      hash: string; clientId?: string; redirectUri?: string; codeChallenge?: string;
-    };
+    const body = await request.json() as CodeRequest;
     if (!/^[a-f0-9]{64}$/.test(body.hash)) return new Response(null, { status: 400 });
     const path = new URL(request.url).pathname;
     if (request.method !== "POST") return new Response(null, { status: 405 });
-    if (path === "/create") {
-      if (!body.clientId || !body.redirectUri || !body.codeChallenge) return new Response(null, { status: 400 });
-      await this.state.blockConcurrencyWhile(async () => {
-        const expires = Date.now() + CODE_TTL_MS;
-        const existingAlarm = await this.storage.getAlarm();
-        if (existingAlarm === null || existingAlarm > expires) await this.storage.setAlarm(expires);
-        this.storage.sql.exec(
-          "INSERT INTO codes (hash, client_id, redirect_uri, challenge, expires_at) VALUES (?, ?, ?, ?, ?)",
-          body.hash, body.clientId!, body.redirectUri!, body.codeChallenge!, expires,
-        );
-      });
-      return new Response(null, { status: 201 });
-    }
-    if (path === "/consume") {
-      const row = this.storage.sql.exec<{
-        client_id: string; redirect_uri: string; challenge: string; expires_at: number;
-      }>("DELETE FROM codes WHERE hash = ? RETURNING client_id, redirect_uri, challenge, expires_at", body.hash)
-        .toArray()[0];
-      if (!row || row.expires_at <= Date.now()) return new Response(null, { status: 404 });
-      const result: CodeRecord = { clientId: row.client_id, redirectUri: row.redirect_uri,
-        codeChallenge: row.challenge, expiresAt: row.expires_at };
-      return Response.json(result);
-    }
+    if (path === "/create") return this.create(body);
+    if (path === "/consume") return this.consume(body.hash);
     return new Response(null, { status: 404 });
+  }
+
+  private async create(body: CodeRequest): Promise<Response> {
+    if (missingCodeDetails(body)) return new Response(null, { status: 400 });
+    await this.state.blockConcurrencyWhile(async () => {
+      const expires = Date.now() + CODE_TTL_MS;
+      const existingAlarm = await this.storage.getAlarm();
+      if (existingAlarm === null || existingAlarm > expires) await this.storage.setAlarm(expires);
+      this.storage.sql.exec(
+        "INSERT INTO codes (hash, client_id, redirect_uri, challenge, expires_at) VALUES (?, ?, ?, ?, ?)",
+        body.hash, body.clientId!, body.redirectUri!, body.codeChallenge!, expires,
+      );
+    });
+    return new Response(null, { status: 201 });
+  }
+
+  private consume(hash: string): Response {
+    const row = this.storage.sql.exec<{
+      client_id: string; redirect_uri: string; challenge: string; expires_at: number;
+    }>("DELETE FROM codes WHERE hash = ? RETURNING client_id, redirect_uri, challenge, expires_at", hash)
+      .toArray()[0];
+    if (!row || row.expires_at <= Date.now()) return new Response(null, { status: 404 });
+    const result: CodeRecord = { clientId: row.client_id, redirectUri: row.redirect_uri,
+      codeChallenge: row.challenge, expiresAt: row.expires_at };
+    return Response.json(result);
   }
 
   async alarm(): Promise<void> {
