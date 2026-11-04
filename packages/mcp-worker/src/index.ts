@@ -19,15 +19,12 @@
 import { AryeoCore, AryeoError } from "@envesko/aryeo-client";
 import type { OperationId } from "@envesko/aryeo-client";
 import { TOOLS, TOOLS_BY_NAME } from "./generated/tools.v1.js";
-import { handleOAuth, isAuthorised, type OAuthEnv } from "./oauth.js";
+import type { OAuthEnv } from "./oauth.js";
+import { routeOAuthRequest } from "./oauth-routing.js";
+import { validatePortalRequest, type PortalEnv } from "./portal-security.js";
+export { AuthorizationCodes } from "./authorization-codes.js";
 
-export interface Env extends OAuthEnv {
-  /**
-   * The Aryeo API token this deployment acts with. One deployment, one
-   * account: this server is meant to be self-hosted by whoever owns the key.
-   */
-  ARYEO_API_TOKEN: string;
-}
+export interface Env extends OAuthEnv, PortalEnv {}
 
 const PROTOCOL_VERSION = "2024-11-05";
 const SERVER = { name: "aryeo", version: "0.1.0" };
@@ -48,8 +45,8 @@ const json = (body: unknown, status = 200): Response =>
 const result = (id: JsonRpcRequest["id"], value: unknown): Response =>
   json({ jsonrpc: "2.0", id: id ?? null, result: value });
 
-const error = (id: JsonRpcRequest["id"], code: number, message: string): Response =>
-  json({ jsonrpc: "2.0", id: id ?? null, error: { code, message } });
+const error = (id: JsonRpcRequest["id"], code: number, message: string, status = 200): Response =>
+  json({ jsonrpc: "2.0", id: id ?? null, error: { code, message } }, status);
 
 async function callTool(
   env: Env,
@@ -64,9 +61,8 @@ async function callTool(
     };
   }
 
-  const core = new AryeoCore({ apiKey: env.ARYEO_API_TOKEN });
-
   try {
+    const core = new AryeoCore({ apiKey: env.ARYEO_API_TOKEN });
     const response = await core.call(tool.operationId as OperationId, args);
     return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
   } catch (err) {
@@ -78,75 +74,90 @@ async function callTool(
   }
 }
 
+async function dispatchRequest(body: JsonRpcRequest, env: Env, protocolVersion = PROTOCOL_VERSION): Promise<Response> {
+  switch (body.method) {
+    case "initialize":
+      return result(body.id, { protocolVersion, capabilities: { tools: {} }, serverInfo: SERVER });
+    case "notifications/initialized":
+      return new Response(null, { status: 204 });
+    case "tools/list":
+      return result(body.id, { tools: TOOLS.map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) });
+    case "tools/call":
+      return dispatchTool(body, env);
+    case "ping":
+      return result(body.id, {});
+    default:
+      return error(body.id, -32601, `Unsupported method ${body.method}.`);
+  }
+}
+
+function isRpcRequest(value: unknown): value is JsonRpcRequest {
+  if (typeof value !== "object") return false;
+  if (value === null) return false;
+  if (Array.isArray(value)) return false;
+  const body = value as Record<string, unknown>;
+  if (body["jsonrpc"] !== "2.0") return false;
+  return typeof body["method"] === "string";
+}
+
+async function dispatchTool(body: JsonRpcRequest, env: Env): Promise<Response> {
+  const name = body.params?.["name"];
+  if (typeof name !== "string") return error(body.id, -32602, "A tool name is required.");
+  const args = (body.params?.["arguments"] ?? {}) as Record<string, unknown>;
+  return result(body.id, await callTool(env, name, args));
+}
+
+async function dispatchMcpRequest(request: Request, env: Env, accessOnly: boolean): Promise<Response> {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return error(null, -32700, "Invalid JSON.", accessOnly ? 400 : 200);
+  }
+  if (!isRpcRequest(body)) return error(null, -32600, "Invalid request.", accessOnly ? 400 : 200);
+  if (accessOnly) {
+    if (body.id === undefined) {
+      return body.method === "notifications/initialized" || body.method === "notifications/cancelled"
+        ? new Response(null, { status: 202 })
+        : json({ error: "Unsupported notification." }, 400);
+    }
+    if (body.method === "notifications/initialized" || body.method === "notifications/cancelled") {
+      return error(body.id, -32600, "Invalid request.");
+    }
+    return dispatchRequest(body, env, "2025-06-18");
+  }
+  return dispatchRequest(body, env);
+}
+
+async function handlePortalRequest(request: Request, env: Env, url: URL, ctx?: ExecutionContext): Promise<Response> {
+  const denied = await validatePortalRequest(request, env, url, ctx);
+  if (denied) return denied;
+  return dispatchMcpRequest(request, env, env.MCP_AUTH_MODE === "access_only");
+}
+
+function invalidAuthenticationMode(env: Env): boolean {
+  const accessPinFailed = env.MCP_REQUIRE_ACCESS_ONLY !== undefined &&
+    (env.MCP_REQUIRE_ACCESS_ONLY !== "true" || env.MCP_AUTH_MODE !== "access_only");
+  const portalPinFailed = env.MCP_REQUIRE_PORTAL_BEARER !== undefined &&
+    (env.MCP_REQUIRE_PORTAL_BEARER !== "true" || env.MCP_AUTH_MODE !== "portal_bearer");
+  const supportedMode = env.MCP_AUTH_MODE === undefined ||
+    ["oauth", "portal_bearer", "access_only"].includes(env.MCP_AUTH_MODE);
+  return accessPinFailed || portalPinFailed || !supportedMode;
+}
+
+async function handleOAuthRequest(request: Request, env: Env, url: URL): Promise<Response> {
+  const response = await routeOAuthRequest({ request, env, url, server: SERVER.name, tools: TOOLS.length, json });
+  if (response) return response;
+  return dispatchMcpRequest(request, env, false);
+}
+
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
-
-    if (request.method === "GET" && url.pathname === "/health") {
-      return json({ ok: true, server: SERVER.name, tools: TOOLS.length });
+    if (invalidAuthenticationMode(env)) {
+      return json({ error: "Authentication mode is not configured." }, 503);
     }
-
-    // Discovery, registration, approval and token exchange.
-    const oauth = await handleOAuth(request, env, url);
-    if (oauth !== null) return oauth;
-
-    if (request.method !== "POST") {
-      return json({ error: "Send MCP requests as POST." }, 405);
-    }
-
-    if (!(await isAuthorised(request, env))) {
-      // The resource metadata pointer is what lets a client discover where to
-      // authenticate rather than simply failing.
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: {
-          "Content-Type": "application/json",
-          "WWW-Authenticate":
-            `Bearer realm="${SERVER.name}", ` +
-            `resource_metadata="${url.origin}/.well-known/oauth-protected-resource"`,
-        },
-      });
-    }
-
-    let body: JsonRpcRequest;
-    try {
-      body = (await request.json()) as JsonRpcRequest;
-    } catch {
-      return error(null, -32700, "Invalid JSON.");
-    }
-
-    switch (body.method) {
-      case "initialize":
-        return result(body.id, {
-          protocolVersion: PROTOCOL_VERSION,
-          capabilities: { tools: {} },
-          serverInfo: SERVER,
-        });
-
-      case "notifications/initialized":
-        return new Response(null, { status: 204 });
-
-      case "tools/list":
-        return result(body.id, {
-          tools: TOOLS.map((tool) => ({
-            name: tool.name,
-            description: tool.description,
-            inputSchema: tool.inputSchema,
-          })),
-        });
-
-      case "tools/call": {
-        const name = body.params?.["name"];
-        if (typeof name !== "string") return error(body.id, -32602, "A tool name is required.");
-        const args = (body.params?.["arguments"] ?? {}) as Record<string, unknown>;
-        return result(body.id, await callTool(env, name, args));
-      }
-
-      case "ping":
-        return result(body.id, {});
-
-      default:
-        return error(body.id, -32601, `Unsupported method ${body.method}.`);
-    }
+    if (env.MCP_AUTH_MODE === "portal_bearer" || env.MCP_AUTH_MODE === "access_only") return handlePortalRequest(request, env, url, ctx);
+    return handleOAuthRequest(request, env, url);
   },
 };

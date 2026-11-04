@@ -34,7 +34,7 @@ result.meta.recordsScanned;     // how far it looked
 result.meta.truncated;          // true means the result is incomplete
 ```
 
-Retries cover rate limits, server errors and network timeouts. A record deleted upstream raises `AryeoDeletedUpstreamError` rather than being retried forever.
+Retries cover rate limits, server errors and network timeouts for safe reads. A 404 from a generated call raises a non-retryable `AryeoHttpError`; it does not establish whether a record was deleted or never existed.
 
 Anything that changes data requires you to echo an identifier off the target record, so it cannot fire by accident:
 
@@ -45,6 +45,8 @@ await aryeo.orders.tags.add({ orderId, tagId, confirm: String(order.number) });
 ## Errors
 
 `AryeoHttpError`, `AryeoDeletedUpstreamError`, `AryeoUnavailableOperationError`, `AryeoConfirmationError`, `AryeoIgnoredFilterError`. All extend `AryeoError`.
+
+`AryeoDeletedUpstreamError` remains exported for compatibility, but generated calls do not emit it.
 
 ## Documentation
 

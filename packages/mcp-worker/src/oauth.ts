@@ -24,12 +24,13 @@
  *   Access tokens are stored as hashes. A leaked KV dump does not yield
  *   working tokens.
  *
- *   Authorisation codes are single use and short lived.
+ *   Authorisation codes are short lived. Atomic single-use redemption requires
+ *   the explicitly configured Durable Object store; legacy KV is non-atomic.
  */
 
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30;
-const AUTH_CODE_TTL_SECONDS = 600;
 const CLIENT_TTL_SECONDS = 60 * 60 * 24 * 365;
+const AUTH_CODE_TTL_SECONDS = 60 * 10;
 
 /**
  * Where an authorisation code may be delivered, by default.
@@ -64,6 +65,9 @@ const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export interface OAuthEnv {
   OAUTH_KV: KVNamespace;
+  OAUTH_CODES?: DurableObjectNamespace;
+  /** Defaults to legacy KV for existing deployments; atomic requires OAUTH_CODES. */
+  OAUTH_CODE_STORE?: string;
   /** The operator pastes this at /authorize to prove the deployment is theirs. */
   MCP_APPROVAL_CODE: string;
   /**
@@ -76,6 +80,15 @@ export interface OAuthEnv {
    * A wildcard is deliberately not supported. Naming the host is the point.
    */
   ALLOWED_REDIRECT_HOSTS?: string;
+  /** Legacy allows old deployments with no limiter bindings; required fails closed. */
+  OAUTH_RATE_LIMIT_MODE?: string;
+  RATE_LIMIT_APPROVE?: OAuthRateLimiter;
+  RATE_LIMIT_REGISTER?: OAuthRateLimiter;
+  RATE_LIMIT_TOKEN?: OAuthRateLimiter;
+}
+
+export interface OAuthRateLimiter {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
 }
 
 interface StoredClient {
@@ -88,6 +101,33 @@ interface StoredAuthCode {
   clientId: string;
   redirectUri: string;
   codeChallenge: string;
+}
+
+async function codeStoreRequest(
+  env: OAuthEnv, code: string, action: "create" | "consume", payload?: StoredAuthCode,
+): Promise<Response> {
+  const mode = env.OAUTH_CODE_STORE ?? "legacy";
+  if (mode === "legacy") {
+    if (action === "create") {
+      if (!payload) return new Response(null, { status: 503 });
+      await env.OAUTH_KV.put(`code:${code}`, JSON.stringify(payload), { expirationTtl: AUTH_CODE_TTL_SECONDS });
+      return new Response(null, { status: 201 });
+    }
+    const raw = await env.OAUTH_KV.get(`code:${code}`);
+    if (!raw) return new Response(null, { status: 404 });
+    // This preserves existing KV behaviour, which is not atomic under concurrency.
+    await env.OAUTH_KV.delete(`code:${code}`);
+    return new Response(raw, { headers: { "Content-Type": "application/json" } });
+  }
+  if (mode !== "atomic" || !env.OAUTH_CODES) return new Response(null, { status: 503 });
+  if (!/^[a-f0-9]{64}$/.test(code)) return new Response(null, { status: 404 });
+  const hash = await sha256Hex(code);
+  const id = env.OAUTH_CODES.idFromName(hash.slice(0, 2));
+  return env.OAUTH_CODES.get(id).fetch(`https://authorization-codes.internal/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ hash, ...payload }),
+  });
 }
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}): Response =>
@@ -215,185 +255,201 @@ function approvalPage(params: URLSearchParams, clientName: string, message?: str
   );
 }
 
-/**
- * Handles every OAuth route. Returns null when the path is not one of ours, so
- * the caller can carry on to the MCP endpoint.
- */
-export async function handleOAuth(
-  request: Request,
-  env: OAuthEnv,
-  url: URL,
-): Promise<Response | null> {
-  const issuer = url.origin;
-
-  if (url.pathname === "/.well-known/oauth-authorization-server" && request.method === "GET") {
-    return json({
-      issuer,
-      authorization_endpoint: `${issuer}/authorize`,
-      token_endpoint: `${issuer}/token`,
-      registration_endpoint: `${issuer}/register`,
-      response_types_supported: ["code"],
-      grant_types_supported: ["authorization_code"],
-      code_challenge_methods_supported: ["S256"],
-      token_endpoint_auth_methods_supported: ["none"],
-    });
-  }
-
-  if (url.pathname === "/.well-known/oauth-protected-resource" && request.method === "GET") {
-    return json({ resource: issuer, authorization_servers: [issuer] });
-  }
-
-  // Dynamic client registration. Anyone may register, which is why the
-  // redirect allowlist rather than the client identity is what protects this.
-  if (url.pathname === "/register" && request.method === "POST") {
-    let body: { redirect_uris?: unknown; client_name?: unknown };
-    try {
-      body = (await request.json()) as typeof body;
-    } catch {
-      return oauthError("invalid_request", "The registration body must be JSON.");
-    }
-
-    const redirectUris = Array.isArray(body.redirect_uris)
-      ? body.redirect_uris.filter((u): u is string => typeof u === "string")
-      : [];
-    if (redirectUris.length === 0) {
-      return oauthError("invalid_redirect_uri", "At least one redirect_uri is required.");
-    }
-    for (const uri of redirectUris) {
-      if (!isAllowedRedirect(uri, env)) {
-        let host = uri;
-        try {
-          host = new URL(uri).hostname;
-        } catch {
-          // Keep the raw value: an unparseable URI is worth showing verbatim.
-        }
-        return oauthError(
-          "invalid_redirect_uri",
-          `This server does not accept authorisation codes at ${host}. ` +
-            `If you trust that client, add the host with: ` +
-            `wrangler secret put ALLOWED_REDIRECT_HOSTS`,
-        );
-      }
-    }
-
-    const clientId = randomToken(16);
-    const client: StoredClient = {
-      clientId,
-      redirectUris,
-      name: typeof body.client_name === "string" ? body.client_name.slice(0, 80) : "An MCP client",
-    };
-    await env.OAUTH_KV.put(`client:${clientId}`, JSON.stringify(client), {
-      expirationTtl: CLIENT_TTL_SECONDS,
-    });
-
-    return json(
-      {
-        client_id: clientId,
-        client_name: client.name,
-        redirect_uris: redirectUris,
-        grant_types: ["authorization_code"],
-        response_types: ["code"],
-        token_endpoint_auth_method: "none",
-      },
-      201,
-    );
-  }
-
-  if (url.pathname === "/authorize") {
-    const params =
-      request.method === "POST"
-        ? new URLSearchParams(await request.text())
-        : url.searchParams;
-
-    const clientId = params.get("client_id") ?? "";
-    const redirectUri = params.get("redirect_uri") ?? "";
-    const codeChallenge = params.get("code_challenge") ?? "";
-    const method = params.get("code_challenge_method") ?? "";
-    const state = params.get("state") ?? "";
-
-    const stored = await env.OAUTH_KV.get(`client:${clientId}`);
-    if (!stored) return oauthError("invalid_client", "Unknown client. Register first.");
-    const client = JSON.parse(stored) as StoredClient;
-
-    if (!client.redirectUris.includes(redirectUri) || !isAllowedRedirect(redirectUri, env)) {
-      return oauthError("invalid_redirect_uri", "That redirect_uri was not registered.");
-    }
-    // Without PKCE an intercepted code is enough to mint a token.
-    if (method !== "S256" || codeChallenge.length < 43) {
-      return oauthError("invalid_request", "PKCE with S256 is required.");
-    }
-
-    if (request.method === "GET") {
-      return approvalPage(params, client.name);
-    }
-
-    if (request.method === "POST") {
-      const supplied = params.get("approval_code") ?? "";
-      if (!env.MCP_APPROVAL_CODE || !secretsMatch(supplied, env.MCP_APPROVAL_CODE)) {
-        // Re-render rather than redirect, so a wrong code never reaches the
-        // client as a failed authorisation.
-        const retry = new URLSearchParams(params);
-        retry.delete("approval_code");
-        return approvalPage(retry, client.name, "That approval code is not correct.");
-      }
-
-      const code = randomToken(32);
-      const payload: StoredAuthCode = { clientId, redirectUri, codeChallenge };
-      await env.OAUTH_KV.put(`code:${code}`, JSON.stringify(payload), {
-        expirationTtl: AUTH_CODE_TTL_SECONDS,
-      });
-
-      const target = new URL(redirectUri);
-      target.searchParams.set("code", code);
-      if (state) target.searchParams.set("state", state);
-      return new Response(null, { status: 302, headers: { Location: target.toString() } });
-    }
-
-    return oauthError("invalid_request", "Use GET or POST.", 405);
-  }
-
-  if (url.pathname === "/token" && request.method === "POST") {
-    const form = new URLSearchParams(await request.text());
-
-    if (form.get("grant_type") !== "authorization_code") {
-      return oauthError("unsupported_grant_type", "Only authorization_code is supported.");
-    }
-
-    const code = form.get("code") ?? "";
-    const verifier = form.get("code_verifier") ?? "";
-    const redirectUri = form.get("redirect_uri") ?? "";
-    const clientId = form.get("client_id") ?? "";
-
-    const raw = await env.OAUTH_KV.get(`code:${code}`);
-    if (!raw) return oauthError("invalid_grant", "That code is unknown, used or expired.");
-    // Single use: consume it before anything else can.
-    await env.OAUTH_KV.delete(`code:${code}`);
-
-    const stored = JSON.parse(raw) as StoredAuthCode;
-    if (stored.clientId !== clientId || stored.redirectUri !== redirectUri) {
-      return oauthError("invalid_grant", "That code was issued for a different client.");
-    }
-    if ((await sha256Base64Url(verifier)) !== stored.codeChallenge) {
-      return oauthError("invalid_grant", "The code verifier does not match.");
-    }
-
-    const accessToken = randomToken(32);
-    // Stored as a hash, so a KV dump yields nothing usable.
-    await env.OAUTH_KV.put(`token:${await sha256Hex(accessToken)}`, clientId, {
-      expirationTtl: ACCESS_TOKEN_TTL_SECONDS,
-    });
-
-    return json(
-      { access_token: accessToken, token_type: "Bearer", expires_in: ACCESS_TOKEN_TTL_SECONDS },
-      200,
-      { "Cache-Control": "no-store" },
-    );
-  }
-
-  return null;
+interface OAuthContext { request: Request; env: OAuthEnv; url: URL }
+interface Authorization {
+  params: URLSearchParams;
+  clientId: string;
+  redirectUri: string;
+  codeChallenge: string;
+  method: string;
+  state: string;
 }
 
-/** Whether a request carries a token this server issued. */
+function authorizationMetadata({ url }: OAuthContext): Response {
+  const issuer = url.origin;
+  return json({ issuer, authorization_endpoint: `${issuer}/authorize`,
+    token_endpoint: `${issuer}/token`, registration_endpoint: `${issuer}/register`,
+    response_types_supported: ["code"], grant_types_supported: ["authorization_code"],
+    code_challenge_methods_supported: ["S256"], token_endpoint_auth_methods_supported: ["none"] });
+}
+
+function resourceMetadata({ url }: OAuthContext): Response {
+  return json({ resource: url.origin, authorization_servers: [url.origin] });
+}
+
+function rejectedRedirect(uri: string): Response {
+  let host = uri;
+  try { host = new URL(uri).hostname; } catch { /* Keep the invalid value for diagnosis. */ }
+  return oauthError("invalid_redirect_uri",
+    `This server does not accept authorisation codes at ${host}. ` +
+    `If you trust that client, add the host with: wrangler secret put ALLOWED_REDIRECT_HOSTS`);
+}
+
+async function registerClient({ request, env }: OAuthContext): Promise<Response> {
+  let raw: unknown;
+  try { raw = await request.json(); }
+  catch { return oauthError("invalid_request", "The registration body must be JSON."); }
+  if (typeof raw !== "object") return oauthError("invalid_request", "The registration body must be an object.");
+  if (raw === null) return oauthError("invalid_request", "The registration body must be an object.");
+  if (Array.isArray(raw)) return oauthError("invalid_request", "The registration body must be an object.");
+  const body = raw as { redirect_uris?: unknown; client_name?: unknown };
+  const redirectUris = Array.isArray(body.redirect_uris)
+    ? body.redirect_uris.filter((u): u is string => typeof u === "string") : [];
+  if (redirectUris.length === 0) return oauthError("invalid_redirect_uri", "At least one redirect_uri is required.");
+  const invalid = redirectUris.find(uri => !isAllowedRedirect(uri, env));
+  if (invalid !== undefined) return rejectedRedirect(invalid);
+  const clientId = randomToken(16);
+  const client: StoredClient = { clientId, redirectUris,
+    name: typeof body.client_name === "string" ? body.client_name.slice(0, 80) : "An MCP client" };
+  await env.OAUTH_KV.put(`client:${clientId}`, JSON.stringify(client), { expirationTtl: CLIENT_TTL_SECONDS });
+  return json({ client_id: clientId, client_name: client.name, redirect_uris: redirectUris,
+    grant_types: ["authorization_code"], response_types: ["code"], token_endpoint_auth_method: "none" }, 201);
+}
+
+async function authorizationClient(context: OAuthContext, auth: Authorization): Promise<StoredClient | Response> {
+  const stored = await context.env.OAUTH_KV.get(`client:${auth.clientId}`);
+  if (!stored) return oauthError("invalid_client", "Unknown client. Register first.");
+  const client = JSON.parse(stored) as StoredClient;
+  if (!client.redirectUris.includes(auth.redirectUri)) {
+    return oauthError("invalid_redirect_uri", "That redirect_uri was not registered.");
+  }
+  if (!isAllowedRedirect(auth.redirectUri, context.env)) {
+    return oauthError("invalid_redirect_uri", "That redirect_uri was not registered.");
+  }
+  const { method, codeChallenge } = auth;
+  if (method !== "S256" || codeChallenge.length < 43) {
+    return oauthError("invalid_request", "PKCE with S256 is required.");
+  }
+  return client;
+}
+
+async function approveAuthorization(context: OAuthContext, auth: Authorization, client: StoredClient): Promise<Response> {
+  const { env } = context;
+  const supplied = auth.params.get("approval_code") ?? "";
+  if (!env.MCP_APPROVAL_CODE || !secretsMatch(supplied, env.MCP_APPROVAL_CODE)) {
+    const retry = new URLSearchParams(auth.params);
+    retry.delete("approval_code");
+    return approvalPage(retry, client.name, "That approval code is not correct.");
+  }
+  const { clientId, redirectUri, codeChallenge, state } = auth;
+  const code = randomToken(32);
+  const payload: StoredAuthCode = { clientId, redirectUri, codeChallenge };
+  try {
+    if ((await codeStoreRequest(env, code, "create", payload)).status !== 201) {
+      return oauthError("temporarily_unavailable", "Authorization storage is unavailable.", 503);
+    }
+  } catch {
+    return oauthError("temporarily_unavailable", "Authorization storage is unavailable.", 503);
+  }
+  const target = new URL(redirectUri);
+  target.searchParams.set("code", code);
+  if (state) target.searchParams.set("state", state);
+  return new Response(null, { status: 302, headers: { Location: target.toString() } });
+}
+
+async function authorize(context: OAuthContext): Promise<Response> {
+  const { request, url } = context;
+  const params = request.method === "POST" ? new URLSearchParams(await request.text()) : url.searchParams;
+  const auth: Authorization = { params, clientId: params.get("client_id") ?? "",
+    redirectUri: params.get("redirect_uri") ?? "", codeChallenge: params.get("code_challenge") ?? "",
+    method: params.get("code_challenge_method") ?? "", state: params.get("state") ?? "" };
+  const client = await authorizationClient(context, auth);
+  if (client instanceof Response) return client;
+  if (request.method === "GET") return approvalPage(params, client.name);
+  if (request.method === "POST") return approveAuthorization(context, auth, client);
+  return oauthError("invalid_request", "Use GET or POST.", 405);
+}
+
+async function exchangeToken({ request, env }: OAuthContext): Promise<Response> {
+  const form = new URLSearchParams(await request.text());
+  if (form.get("grant_type") !== "authorization_code") {
+    return oauthError("unsupported_grant_type", "Only authorization_code is supported.");
+  }
+  const code = form.get("code") ?? "";
+  const verifier = form.get("code_verifier") ?? "";
+  const redirectUri = form.get("redirect_uri") ?? "";
+  const clientId = form.get("client_id") ?? "";
+  let stored: StoredAuthCode;
+  try {
+    const response = await codeStoreRequest(env, code, "consume");
+    if (response.status === 404) return oauthError("invalid_grant", "That code is unknown, used or expired.");
+    if (!response.ok) return oauthError("temporarily_unavailable", "Authorization storage is unavailable.", 503);
+    stored = await response.json() as StoredAuthCode;
+  } catch {
+    return oauthError("temporarily_unavailable", "Authorization storage is unavailable.", 503);
+  }
+  if (stored.clientId !== clientId || stored.redirectUri !== redirectUri) {
+    return oauthError("invalid_grant", "That code was issued for a different client.");
+  }
+  if ((await sha256Base64Url(verifier)) !== stored.codeChallenge) {
+    return oauthError("invalid_grant", "The code verifier does not match.");
+  }
+  const accessToken = randomToken(32);
+  await env.OAUTH_KV.put(`token:${await sha256Hex(accessToken)}`, clientId, { expirationTtl: ACCESS_TOKEN_TTL_SECONDS });
+  return json({ access_token: accessToken, token_type: "Bearer", expires_in: ACCESS_TOKEN_TTL_SECONDS },
+    200, { "Cache-Control": "no-store" });
+}
+
+type LimiterBinding = "RATE_LIMIT_APPROVE" | "RATE_LIMIT_REGISTER" | "RATE_LIMIT_TOKEN";
+interface OAuthRoute {
+  handler: (context: OAuthContext) => Response | Promise<Response>;
+  limiter?: LimiterBinding;
+}
+const OAUTH_ROUTES = new Map<string, OAuthRoute>([
+  ["GET /.well-known/oauth-authorization-server", { handler: authorizationMetadata }],
+  ["GET /.well-known/oauth-protected-resource", { handler: resourceMetadata }],
+  ["POST /register", { handler: registerClient, limiter: "RATE_LIMIT_REGISTER" }],
+  ["POST /token", { handler: exchangeToken, limiter: "RATE_LIMIT_TOKEN" }],
+]);
+
+function oauthRoute({ request, url }: OAuthContext): OAuthRoute | undefined {
+  if (url.pathname !== "/authorize") return OAUTH_ROUTES.get(`${request.method} ${url.pathname}`);
+  if (request.method === "POST") return { handler: authorize, limiter: "RATE_LIMIT_APPROVE" };
+  return { handler: authorize };
+}
+
+function rateLimitUnavailable(): Response {
+  return oauthError("temporarily_unavailable", "OAuth rate limiting is unavailable.", 503);
+}
+
+function invalidRateLimitMode(mode: string | undefined): boolean {
+  return mode !== undefined && mode !== "legacy" && mode !== "required";
+}
+
+function rateLimitConfiguration(env: OAuthEnv): "legacy" | "configured" | "invalid" {
+  const limiters = [env.RATE_LIMIT_APPROVE, env.RATE_LIMIT_REGISTER, env.RATE_LIMIT_TOKEN];
+  const present = limiters.filter((limiter) => limiter !== undefined && limiter !== null).length;
+  if (present === 0) return env.OAUTH_RATE_LIMIT_MODE === "required" ? "invalid" : "legacy";
+  return present === limiters.length ? "configured" : "invalid";
+}
+
+async function throttle(context: OAuthContext, binding?: LimiterBinding): Promise<Response | null> {
+  if (invalidRateLimitMode(context.env.OAUTH_RATE_LIMIT_MODE)) return rateLimitUnavailable();
+  if (!binding) return null;
+  const configuration = rateLimitConfiguration(context.env);
+  if (configuration === "legacy") return null;
+  if (configuration === "invalid") return rateLimitUnavailable();
+  const limiter = context.env[binding];
+  if (!limiter) return rateLimitUnavailable();
+  try {
+    const result = await limiter.limit({ key: context.request.headers.get("CF-Connecting-IP") ?? "unknown" });
+    if (result.success) return null;
+    return json({ error: "slow_down", error_description: "Too many attempts. Try again later." },
+      429, { "Retry-After": "60" });
+  } catch {
+    return rateLimitUnavailable();
+  }
+}
+
+export async function handleOAuth(request: Request, env: OAuthEnv, url: URL): Promise<Response | null> {
+  const context = { request, env, url };
+  const route = oauthRoute(context);
+  if (!route) return null;
+  const throttled = await throttle(context, route.limiter);
+  if (throttled) return throttled;
+  return route.handler(context);
+}
+
 export async function isAuthorised(request: Request, env: OAuthEnv): Promise<boolean> {
   const header = request.headers.get("Authorization") ?? "";
   if (!header.startsWith("Bearer ")) return false;

@@ -139,6 +139,35 @@ describe("a filter the API ignores never reaches the wire", () => {
     );
   });
 
+  it("requests listing identity on every scan page and preserves requested includes", async () => {
+    for (const include of [undefined, ["customer"], ["listing", "customer"]]) {
+      const calls = [];
+      const aryeo = createClient({
+        apiKey: "test-key",
+        fetch: async (input) => {
+          const url = new URL(String(input));
+          calls.push(url);
+          const page = Number(url.searchParams.get("page"));
+          const includes = (url.searchParams.get("include") ?? "").split(",");
+          const listing = includes.includes("listing") ? { listing: { id: "wanted" } } : {};
+          return new Response(JSON.stringify({
+            data: [{ id: String(page), ...listing }],
+            meta: { current_page: page, last_page: 2 },
+          }));
+        },
+      });
+      const result = await aryeo.orders.list({ listingId: "wanted", ...(include ? { include } : {}) });
+      assert.deepEqual(result.data.map((order) => order.id), ["1", "2"]);
+      assert.equal(calls.length, 2);
+      for (const url of calls) {
+        const includes = url.searchParams.get("include").split(",");
+        assert.equal(includes.filter((name) => name === "listing").length, 1);
+        for (const name of include ?? []) assert.ok(includes.includes(name));
+        assert.equal(url.searchParams.has("filter[listing_id]"), false);
+      }
+    }
+  });
+
   it("flags truncation when the scan bound is reached before the end", async () => {
     const page = {
       body: {
@@ -216,13 +245,58 @@ describe("retrying only what a retry can fix", () => {
     assert.equal(calls.length, 1);
   });
 
-  it("surfaces a deleted record rather than retrying it forever", async () => {
+  it("surfaces an ordinary 404 without claiming the record was deleted", async () => {
     const { aryeo, calls } = client([{ status: 404, body: { message: "not found" } }]);
     await assert.rejects(
       () => aryeo.orders.get({ orderId: "019fc54f-0000-7000-8000-000000000000" }),
-      AryeoDeletedUpstreamError,
+      (err) => err instanceof AryeoHttpError && !(err instanceof AryeoDeletedUpstreamError),
     );
-    assert.equal(calls.length, 1, "a record deleted upstream 404s forever");
+    assert.equal(calls.length, 1);
+  });
+
+  it("does not repeat a write after a retryable response or network timeout", async () => {
+    for (const failure of ["response", "timeout"]) {
+      let calls = 0;
+      const aryeo = createClient({
+        apiKey: "test-key",
+        maxAttempts: 4,
+        baseDelayMs: 0,
+        fetch: async () => {
+          calls++;
+          if (failure === "timeout") throw new DOMException("timed out", "AbortError");
+          return new Response("temporary failure", { status: 503 });
+        },
+      });
+      await assert.rejects(() => aryeo.core.call("orders.tags.add", {
+        orderId: "order", tag_id: "tag", confirm: "order number",
+      }));
+      assert.equal(calls, 1, `${failure} must not replay the write`);
+    }
+  });
+
+  it("times out a stalled response body without replaying the write", { timeout: 2000 }, async () => {
+    let calls = 0;
+    let signal;
+    const aryeo = createClient({
+      apiKey: "test-key",
+      maxAttempts: 4,
+      timeoutMs: 30,
+      fetch: async (_input, init) => {
+        calls++;
+        signal = init.signal;
+        return new Response(new ReadableStream({
+          start(controller) { controller.enqueue(new TextEncoder().encode("{")); },
+        }));
+      },
+    });
+    await assert.rejects(
+      () => aryeo.core.call("orders.tags.add", {
+        orderId: "order", tag_id: "tag", confirm: "order number",
+      }),
+      { name: "AbortError" },
+    );
+    assert.equal(signal.aborted, true);
+    assert.equal(calls, 1);
   });
 
   it("pulls Aryeo field errors out of the data map", async () => {

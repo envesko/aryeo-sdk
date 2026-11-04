@@ -16,6 +16,8 @@ import type { FilterDescriptor, OperationDescriptor } from "./generated/operatio
 import { AryeoIgnoredFilterError } from "./errors.js";
 
 const ISO_DATE_LIKE = /^\d{4}-\d{2}-\d{2}([T ]|$)/;
+const RESERVED = new Set(["include", "sort", "page", "perPage", "confirm"]);
+const MISSING_PATH_VALUES = new Set<unknown>([undefined, null, ""]);
 
 /** Lowercase an enum value, but never a date or timestamp. */
 export function filterValue(value: string | number | boolean): string {
@@ -30,76 +32,74 @@ export interface BuiltQuery {
   clientSide: Array<{ name: string; value: unknown; descriptor: FilterDescriptor }>;
 }
 
+interface QueryContext extends BuiltQuery {
+  operationId: string;
+  descriptor: OperationDescriptor;
+}
+
 export function buildQuery(
   operationId: string,
   descriptor: OperationDescriptor,
   params: Record<string, unknown>,
 ): BuiltQuery {
-  const query: Record<string, string> = {};
-  const clientSide: BuiltQuery["clientSide"] = [];
-  const filters = (descriptor.filters ?? {}) as Record<string, FilterDescriptor>;
-
-  for (const [name, raw] of Object.entries(params)) {
-    if (raw === undefined || raw === null) continue;
-    if (name === "include" || name === "sort" || name === "page" || name === "perPage") continue;
-    if (name === "confirm") continue;
-
-    const filter = filters[name];
-
-    if (filter) {
-      if (filter.state === "rejected") {
-        throw new AryeoIgnoredFilterError(operationId, name, filter.useInstead);
-      }
-      if (filter.state === "ignored") {
-        // Never send it. The API would take it and return everything.
-        if (filter.strategy === "client-side") {
-          clientSide.push({ name, value: raw, descriptor: filter });
-          continue;
-        }
-        throw new AryeoIgnoredFilterError(operationId, name, filter.useInstead);
-      }
-      if (!filter.wire) continue;
-
-      if (Array.isArray(raw)) {
-        if (filter.arrayForm === "csv") {
-          query[filter.wire] = raw.map((v) => filterValue(v as string)).join(",");
-        } else if (filter.arrayForm === "repeated") {
-          // A repeated key cannot be expressed in a flat record; the transport
-          // sets each in turn, so the last would win. Indexed is used instead,
-          // which every list filter measured so far accepts.
-          raw.forEach((v, i) => {
-            query[`${filter.wire}[${i}]`] = filterValue(v as string);
-          });
-        } else {
-          raw.forEach((v, i) => {
-            query[`${filter.wire}[${i}]`] = filterValue(v as string);
-          });
-        }
-      } else {
-        query[filter.wire] = filterValue(raw as string);
-      }
-      continue;
-    }
-
-    // Not a filter: a plain query parameter such as timezone or interval.
-    if (descriptor.params?.includes(name)) {
-      query[name] = String(raw);
-    }
+  const context: QueryContext = { operationId, descriptor, query: {}, clientSide: [] };
+  for (const [name, value] of Object.entries(params)) {
+    if (value == null) continue;
+    if (RESERVED.has(name)) continue;
+    addParameter(context, name, value);
   }
+  addQueryOptions(context, params);
+  return { query: context.query, clientSide: context.clientSide };
+}
 
-  if (Array.isArray(params["include"]) && params["include"].length > 0) {
-    query["include"] = (params["include"] as string[]).join(",");
+function addParameter(context: QueryContext, name: string, value: unknown): void {
+  const filter = context.descriptor.filters?.[name];
+  if (filter) {
+    addFilter(context, { name, value, descriptor: filter });
+    return;
+  }
+  if (context.descriptor.params?.includes(name)) context.query[name] = String(value);
+}
+
+function addFilter(context: QueryContext, filter: BuiltQuery["clientSide"][number]): void {
+  const descriptor = filter.descriptor;
+  if (descriptor.state === "rejected") rejectFilter(context, filter);
+  if (descriptor.state === "ignored") {
+    if (descriptor.strategy !== "client-side") rejectFilter(context, filter);
+    context.clientSide.push(filter);
+    return;
+  }
+  if (descriptor.wire) writeFilter(context.query, descriptor.wire, descriptor.arrayForm, filter.value);
+}
+
+function rejectFilter(context: QueryContext, filter: BuiltQuery["clientSide"][number]): never {
+  throw new AryeoIgnoredFilterError(context.operationId, filter.name, filter.descriptor.useInstead);
+}
+
+function writeFilter(query: Record<string, string>, wire: string, arrayForm: FilterDescriptor["arrayForm"], value: unknown): void {
+  if (!Array.isArray(value)) {
+    query[wire] = filterValue(value as string);
+    return;
+  }
+  const values = value.map((item) => filterValue(item as string));
+  if (arrayForm === "csv") {
+    query[wire] = values.join(",");
+    return;
+  }
+  // Flat query records cannot retain repeated keys; use indexed brackets.
+  values.forEach((item, index) => { query[`${wire}[${index}]`] = item; });
+}
+
+function addQueryOptions(context: QueryContext, params: Record<string, unknown>): void {
+  const query = context.query;
+  if (Array.isArray(params["include"])) {
+    if (params["include"].length > 0) query["include"] = params["include"].join(",");
   }
   if (typeof params["sort"] === "string") query["sort"] = params["sort"];
   if (typeof params["page"] === "number") query["page"] = String(params["page"]);
   if (typeof params["perPage"] === "number") {
-    const max = descriptor.perPageMax ?? 100;
-    // Asking for more is accepted and silently capped, so promising the
-    // caller a larger page would be a lie the API tells quietly.
-    query["per_page"] = String(Math.min(params["perPage"], max));
+    query["per_page"] = String(Math.min(params["perPage"], context.descriptor.perPageMax ?? 100));
   }
-
-  return { query, clientSide };
 }
 
 /** Fill {braces} in a path template, encoding each value. */
@@ -110,7 +110,7 @@ export function buildPath(
   const used = new Set<string>();
   const path = template.replace(/\{(\w+)\}/g, (_match, key: string) => {
     const value = params[key];
-    if (value === undefined || value === null || value === "") {
+    if (MISSING_PATH_VALUES.has(value)) {
       throw new Error(`Missing path parameter ${key} for ${template}`);
     }
     used.add(key);
