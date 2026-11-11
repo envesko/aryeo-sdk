@@ -1,0 +1,50 @@
+name: PR-Agent review
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+
+permissions: {}
+
+jobs:
+  review:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+    concurrency:
+      group: pr-agent-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - name: Check API key configuration
+        env:
+          OPENAI_KEY: ${{ secrets.PR_AGENT_OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_KEY" ]; then
+            echo 'Missing PR_AGENT_OPENAI_API_KEY GitHub Actions secret.' >&2
+            exit 1
+          fi
+      - name: Review pull request
+        # Official PR-Agent v0.49.0 GitHub Action image, pinned to an attested digest.
+        uses: docker://pragent/pr-agent@sha256:b1ed6e8de56eb4d6e4169ee0d5c209bb5ed1ef071a01c0c042c64b80192a785c
+        env:
+          OPENAI_KEY: ${{ secrets.PR_AGENT_OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIG__MODEL: gpt-4.1-mini
+          CONFIG__FALLBACK_MODELS: '[]'
+          CONFIG__USE_REPO_SETTINGS_FILE: 'false'
+          CONFIG__LOG_LEVEL: INFO
+          CONFIG__IGNORE_PR_TITLE: '[]'
+          GITHUB__IGNORE_BOT_PR: 'false'
+          GITHUB_ACTION_CONFIG__PR_ACTIONS: '["opened", "reopened", "ready_for_review"]'
+          GITHUB_ACTION_CONFIG__AUTO_REVIEW: 'true'
+          GITHUB_ACTION_CONFIG__AUTO_DESCRIBE: 'false'
+          GITHUB_ACTION_CONFIG__AUTO_IMPROVE: 'false'
+          GITHUB_ACTION_CONFIG__HANDLE_PUSH_TRIGGER: 'true'
+          GITHUB_ACTION_CONFIG__PUSH_COMMANDS: '["/review"]'
+          GITHUB_ACTION_CONFIG__PUSH_TRIGGER_IGNORE_BOT_COMMITS: 'false'
+          GITHUB_ACTION_CONFIG__PUSH_TRIGGER_IGNORE_MERGE_COMMITS: 'false'
+          PR_REVIEWER__ENABLE_REVIEW_LABELS_SECURITY: 'false'
+          PR_REVIEWER__ENABLE_REVIEW_LABELS_EFFORT: 'false'
