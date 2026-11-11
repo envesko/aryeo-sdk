@@ -16,6 +16,7 @@ import { describe, it } from "node:test";
 
 import { createClient } from "../../packages/client-ts/dist/index.js";
 import {
+  AryeoError,
   AryeoConfirmationError,
   AryeoDeletedUpstreamError,
   AryeoHttpError,
@@ -68,7 +69,7 @@ describe("item groupings", () => {
     for (const value of [undefined, "", "not-a-uuid", ["00000000-0000-4000-8000-000000000000"]]) {
       await assert.rejects(
         () => aryeo.core.call("scheduling.itemGroupings.list", { item_ids: value }),
-        /item_ids must be one UUID string/,
+        (error) => error instanceof AryeoError && error.message === "item_ids must be one UUID string",
       );
     }
     assert.equal(calls.length, 0);

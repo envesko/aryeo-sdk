@@ -3,6 +3,7 @@
  * adding an operation to the manifest is all it takes to make it callable.
  */
 import {
+  AryeoError,
   AryeoConfirmationError,
   AryeoUnavailableOperationError,
 } from "./errors.js";
@@ -80,7 +81,7 @@ export class AryeoCore {
     if (operationId === "scheduling.itemGroupings.list") {
       const itemId = params["item_ids"];
       if (typeof itemId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(itemId)) {
-        throw new Error("item_ids must be one UUID string");
+        throw new AryeoError("item_ids must be one UUID string");
       }
     }
 
