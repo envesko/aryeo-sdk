@@ -73,6 +73,17 @@ function makeClient(array $rows = [], ?array &$seen = null): Client
     return new Client(new Core('test-key', ['sender' => $sender, 'baseDelayMs' => 1]));
 }
 
+echo "item groupings\n";
+$aryeo = makeClient([], $seen);
+$itemId = '00000000-0000-4000-8000-000000000000';
+$aryeo->core()->call('scheduling.itemGroupings.list', ['item_ids' => $itemId]);
+check('one item reaches the grouping endpoint with GET', 1 === \count($seen) && 'GET' === $seen[0]['method'] && str_contains($seen[0]['url'], '/scheduling/item-groupings?item_ids='.$itemId));
+$aryeo = makeClient([], $seen);
+foreach ([null, '', 'not-a-uuid', [$itemId]] as $value) {
+    check('invalid item ID is refused', throws(static fn () => $aryeo->core()->call('scheduling.itemGroupings.list', ['item_ids' => $value]), \InvalidArgumentException::class));
+}
+check('invalid item IDs never reach the network', [] === $seen);
+
 echo "filters reach the wire in the form the API honours\n";
 $aryeo = makeClient([], $seen);
 $aryeo->orders()->list(

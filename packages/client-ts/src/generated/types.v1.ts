@@ -451,6 +451,17 @@ export interface ProductsListParams {
 }
 
 /**
+ * Read scheduling groupings for one order item.
+ *
+ * Product and order-item serviceability fields may be missing; a missing flag is not a match.
+ *
+ * The response may contain user and team-member information.
+ */
+export interface SchedulingItemGroupingsListParams {
+  item_ids: string;
+}
+
+/**
  * Which days have availability across a range. Answers a whole window in one request.
  *
  * Prefer this before available-timeslots: it covers a range in one call, while timeslots takes one day per call.

@@ -16,6 +16,7 @@ import { describe, it } from "node:test";
 
 import { createClient } from "../../packages/client-ts/dist/index.js";
 import {
+  AryeoError,
   AryeoConfirmationError,
   AryeoDeletedUpstreamError,
   AryeoHttpError,
@@ -50,6 +51,30 @@ function client(responses, extra = {}) {
     aryeo: createClient({ apiKey: "test-key", fetch: fetchImpl, baseDelayMs: 1, ...extra }),
   };
 }
+
+describe("item groupings", () => {
+  it("sends one documented item ID with a read-only request", async () => {
+    const { aryeo, calls } = client([{ body: { data: [] } }]);
+    const id = "00000000-0000-4000-8000-000000000000";
+    await aryeo.core.call("scheduling.itemGroupings.list", { item_ids: id });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].method, "GET");
+    assert.equal(calls[0].url.pathname, "/v1/scheduling/item-groupings");
+    assert.equal(calls[0].url.searchParams.get("item_ids"), id);
+    assert.equal(calls[0].body, undefined);
+  });
+
+  it("refuses missing, malformed and multi-item values before a request", async () => {
+    const { aryeo, calls } = client([{}]);
+    for (const value of [undefined, "", "not-a-uuid", ["00000000-0000-4000-8000-000000000000"]]) {
+      await assert.rejects(
+        () => aryeo.core.call("scheduling.itemGroupings.list", { item_ids: value }),
+        (error) => error instanceof AryeoError && error.message === "item_ids must be one UUID string",
+      );
+    }
+    assert.equal(calls.length, 0);
+  });
+});
 
 describe("filters reach the wire in the form the API honours", () => {
   it("sends filters bracketed, never flat", async () => {
