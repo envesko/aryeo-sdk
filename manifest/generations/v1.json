@@ -1460,6 +1460,26 @@
         "measurement": "13"
       }
     },
+    "scheduling.itemGroupings.list": {
+      "path": "/scheduling/item-groupings",
+      "method": "GET",
+      "summary": "Read scheduling groupings for one order item.",
+      "availability": {
+        "state": "available",
+        "note": "Documented by Aryeo; not yet verified against a live account."
+      },
+      "params": {
+        "item_ids": {
+          "type": "string",
+          "required": true,
+          "note": "One order item UUID. Multi-item encoding is not verified."
+        }
+      },
+      "quirks": [
+        "Product and order-item serviceability fields may be missing; a missing flag is not a match.",
+        "The response may contain user and team-member information."
+      ]
+    },
     "scheduling.availableDates.list": {
       "path": "/scheduling/available-dates",
       "method": "GET",

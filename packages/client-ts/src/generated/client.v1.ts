@@ -133,6 +133,10 @@ export class AryeoClient {
       this.#core.call("products.list", params),
   };
   readonly scheduling = {
+    itemGroupings: {
+      list: (params: T.SchedulingItemGroupingsListParams): Promise<Result<unknown>> =>
+        this.#core.call("scheduling.itemGroupings.list", params),
+    },
     availableDates: {
       list: (params: T.SchedulingAvailableDatesListParams): Promise<Result<unknown>> =>
         this.#core.call("scheduling.availableDates.list", params),

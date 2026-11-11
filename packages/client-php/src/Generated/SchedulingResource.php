@@ -16,6 +16,20 @@ final class SchedulingResource
     }
 
     /**
+     * Read scheduling groupings for one order item.
+     *
+     * Product and order-item serviceability fields may be missing; a missing flag is not a match.
+     *
+     * The response may contain user and team-member information.
+     */
+    public function itemGroupingsList(string $item_ids): \Envesko\Aryeo\Result
+    {
+        return $this->core->call('scheduling.itemGroupings.list', array_filter([
+            'item_ids' => $item_ids,
+        ], static fn ($value) => $value !== null));
+    }
+
+    /**
      * Which days have availability across a range. Answers a whole window in one request.
      *
      * Prefer this before available-timeslots: it covers a range in one call, while timeslots takes one day per call.

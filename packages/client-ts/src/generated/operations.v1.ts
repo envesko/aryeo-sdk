@@ -652,6 +652,14 @@ export const OPERATIONS = {
       "providers"
     ]
   },
+  "scheduling.itemGroupings.list": {
+    "path": "/scheduling/item-groupings",
+    "method": "GET",
+    "availability": "available",
+    "params": [
+      "item_ids"
+    ]
+  },
   "scheduling.availableDates.list": {
     "path": "/scheduling/available-dates",
     "method": "GET",
