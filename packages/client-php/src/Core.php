@@ -70,12 +70,7 @@ final class Core
             throw new \InvalidArgumentException(sprintf('Unknown operation %s.', $operationId));
         }
 
-        if ('scheduling.itemGroupings.list' === $operationId) {
-            $itemId = $params['item_ids'] ?? null;
-            if (!\is_string($itemId) || 1 !== preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $itemId)) {
-                throw new \InvalidArgumentException('item_ids must be one UUID string');
-            }
-        }
+        self::validateOperationParams($operationId, $params);
 
         if ('available' !== $descriptor['availability']) {
             throw new UnavailableOperationException($operationId, $descriptor['availability']);
@@ -114,6 +109,18 @@ final class Core
         }
 
         return $this->scan($operationId, $descriptor, $path, $query, $clientSide);
+    }
+
+    /** @param array<string, mixed> $params */
+    private static function validateOperationParams(string $operationId, array $params): void
+    {
+        if ('scheduling.itemGroupings.list' !== $operationId) {
+            return;
+        }
+        $itemId = $params['item_ids'] ?? null;
+        if (!\is_string($itemId) || 1 !== preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $itemId)) {
+            throw new \InvalidArgumentException('item_ids must be one UUID string');
+        }
     }
 
     /**
