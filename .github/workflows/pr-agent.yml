@@ -32,7 +32,8 @@ jobs:
         env:
           OPENAI_KEY: ${{ secrets.PR_AGENT_OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CONFIG__MODEL: gpt-4.1-mini
+          CONFIG__MODEL: gpt-6-luna
+          CONFIG__REASONING_EFFORT: medium
           CONFIG__FALLBACK_MODELS: '[]'
           CONFIG__USE_REPO_SETTINGS_FILE: 'false'
           CONFIG__LOG_LEVEL: INFO
