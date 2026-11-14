@@ -10,7 +10,7 @@ export interface ToolDefinition {
 }
 
 /**
- * 39 tools, one per callable operation. Adding an operation to the
+ * 40 tools, one per callable operation. Adding an operation to the
  * manifest adds a tool here; there is no hand-maintained list to fall behind.
  */
 export const TOOLS: ToolDefinition[] = [
@@ -1168,6 +1168,23 @@ export const TOOLS: ToolDefinition[] = [
           "maximum": 100
         }
       }
+    }
+  },
+  {
+    "name": "scheduling_item_groupings_list",
+    "operationId": "scheduling.itemGroupings.list",
+    "description": "Read scheduling groupings for one order item. Product and order-item serviceability fields may be missing; a missing flag is not a match. The response may contain user and team-member information.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "item_ids": {
+          "type": "string",
+          "description": "One order item UUID. Multi-item encoding is not verified."
+        }
+      },
+      "required": [
+        "item_ids"
+      ]
     }
   },
   {
